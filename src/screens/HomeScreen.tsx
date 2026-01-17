@@ -7,23 +7,44 @@
  * @format
  */
 
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { COLORS } from '../theme/colors';
+import ChunkErrorBoundary from '../components/ChunkErrorBoundary';
 
-// 导入页面组件
+// 静态导入 - 始终直接加载的组件
 import DashboardScreen from './DashboardScreen';
-import TableScreen from './TableScreen';
 import OrdersScreen from './OrdersScreen';
 import MemberScreen from './MemberScreen';
 import OrderScreen from './OrderScreen';
+
+// 动态导入 - 分包加载
+// webpackChunkName 指定打包后的 chunk 名称
+// __DEV__ 为 true 时预加载（开发环境直接加载），为 false 时懒加载（生产环境）
+const TableScreen = lazy(() =>
+  import(/* webpackChunkName: "table" */ './TableScreen')
+);
+
+// 加载占位符组件
+const TableScreenLoader = () => (
+  <View style={styles.loadingContainer}>
+    <ActivityIndicator size="large" color={COLORS.primary} />
+    <Text style={styles.loadingText}>加载中...</Text>
+  </View>
+);
+
+// 开发环境：预加载 TableScreen 模块，避免切换时的加载延迟
+if (__DEV__) {
+  import('./TableScreen').catch(console.error);
+}
 
 // 常量
 const SIDEBAR_WIDTH = 88;
@@ -57,10 +78,24 @@ export default function HomeScreen() {
   // 渲染当前页面内容
   const renderPageContent = () => {
     switch (activePage) {
-      
+      case 'Table':
+        return (
+          <ChunkErrorBoundary
+            onGoBack={() => setActivePage('Home')}
+            onRetry={() => {
+              // 重置状态重新加载
+              setActivePage('Home');
+              setTimeout(() => setActivePage('Table'), 100);
+            }}
+          >
+            <Suspense fallback={<TableScreenLoader />}>
+              <TableScreen />
+            </Suspense>
+          </ChunkErrorBoundary>
+        );
       case 'Order':
         return <OrderScreen />;
-  
+
       case 'Orders':
         return <OrdersScreen />;
       case 'Member':
@@ -421,5 +456,17 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     overflow: 'hidden',
+  },
+  // 加载状态
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    color: COLORS.gray500,
   },
 });

@@ -49,22 +49,7 @@ export default Repack.defineRspackConfig({
       // 多分包配置：每个功能模块独立打包
       extraChunks: [
         {
-          include: /feature/,
-          type: 'remote',
-          outputPath: path.join(__dirname, 'build/output/android/remote'),
-        },
-        {
-          include: /settings/,
-          type: 'remote',
-          outputPath: path.join(__dirname, 'build/output/android/remote'),
-        },
-        {
-          include: /shop/,
-          type: 'remote',
-          outputPath: path.join(__dirname, 'build/output/android/remote'),
-        },
-        {
-          include: /update/,
+          include: /table/,
           type: 'remote',
           outputPath: path.join(__dirname, 'build/output/android/remote'),
         },

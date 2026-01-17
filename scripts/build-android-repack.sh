@@ -48,13 +48,14 @@ if [ "$BUILD_TYPE" = "debug" ]; then
         --bundle-output android/app/src/main/assets/index.android.bundle \
         --assets-dest android/app/src/main/res
 else
-    echo -e "${YELLOW}  Release 模式：使用 webpack 打包（支持代码分割）${NC}"
-    NODE_ENV=production npx webpack-cli \
-        --config webpack.config.js \
-        --env mini-app=true \
-        --env platform=android \
-        --env dev=false \
-        --progress
+    echo -e "${YELLOW}  Release 模式：使用 Re.Pack Rspack 打包（支持代码分割）${NC}"
+    NODE_ENV=production npx react-native webpack-bundle \
+        --entry-file index.js \
+        --platform android \
+        --dev false \
+        --bundle-output android/app/build/generated/assets/react/release/index.android.bundle \
+        --assets-dest android/app/src/main/res \
+        --config rspack.config.mjs
 fi
 
 # Step 3: 显示打包结果
