@@ -7,7 +7,7 @@
  * @format
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,34 @@ import {
   ScrollView,
   Image,
   Dimensions,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import ProductCard from '../components/ProductCard';
+import type { Product } from '../components/ProductCard';
+
+// 导入菜品数据
+import dishesData from '../data/dishes.json';
+
+// 菜品数据接口定义
+interface Dish {
+  id: string;
+  categoryId: number;
+  categoryName: string;
+  name: string;
+  price: string;
+  image: string;
+  sales: number;
+  isHot: boolean;
+}
+
+// 分类数据接口定义
+interface Category {
+  id: number;
+  name: string;
+  count: number;
+}
 
 // 颜色配置 - 与 order.html 保持一致
 const COLORS = {
@@ -56,7 +83,7 @@ const COLORS = {
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // 左侧面板宽度 (300-340px 根据屏幕适配，匹配HTML的320px)
-const LEFT_PANEL_WIDTH = SCREEN_WIDTH >= 1200 ? 360 : 340;
+const LEFT_PANEL_WIDTH = SCREEN_WIDTH >= 1200 ? 340 : 320;
 
 // 模拟数据 - 购物车商品
 interface CartItem {
@@ -71,7 +98,13 @@ interface CartItem {
 }
 
 const mockCartItems: CartItem[] = [
-  { id: '1', name: '摩卡咖啡', specs: '常温、不加奶、不加糖', quantity: 1, price: 48.0 },
+  {
+    id: '1',
+    name: '摩卡咖啡',
+    specs: '常温、不加奶、不加糖',
+    quantity: 1,
+    price: 48.0,
+  },
   { id: '2', name: '巧克力物语', specs: '默认配置', quantity: 1, price: 48.0 },
   { id: '3', name: '摩卡咖啡', specs: '冰、少糖', quantity: 1, price: 48.0 },
   {
@@ -86,282 +119,87 @@ const mockCartItems: CartItem[] = [
   },
 ];
 
-// 模拟数据 - 分类
-const categories = [
-  '全部分类',
-  '意式咖啡',
-  '精酿啤酒',
-  '原麦烘焙',
-  '意式早餐',
-  '美团套餐',
-  '精酿啤酒',
-  '美团套餐',
-  '原麦烘焙',
-];
+// ==================== 分类配置 ====================
+// 从菜品数据中动态生成分类配置
+const generateCategoryConfig = (dishes: Dish[]): Category[] => {
+  // 使用 Map 来收集每个分类的菜品数量
+  const categoryMap = new Map<number, { name: string; count: number }>();
 
-// 模拟数据 - 商品
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  image: string;
-  quantity: number;
-}
+  dishes.forEach(dish => {
+    const existing = categoryMap.get(dish.categoryId);
+    if (existing) {
+      existing.count++;
+    } else {
+      categoryMap.set(dish.categoryId, {
+        name: dish.categoryName,
+        count: 1,
+      });
+    }
+  });
 
-const mockProducts: Product[] = [
-  {
-    id: '1',
-    name: '摩卡咖啡',
-    price: 28.9,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAGhufoySu1LSMMqEf1TVK4tcpsx9q0LNXTC0ViFJ4VdQ2bQBSHi4Lz7LrBPD1_aZSTlW-WjBpPtzW4mKeTJ1QbBnN5shCN8-wT_kzxXdwMrEywQZ3sGGDzgnzzh7VyuFLfZcHBHm90c2Tvr9Moi2UI_nGodYJx3IjI6yEZg5Iqs-qM2uDtyX0Ywa1PmRFLwejkzReXCU1QidI2ijs8ebZC7p60KFgkqzi8EnjpHae-J4_WmHTtauGLl6mNPpG0eJm31qXzZrlBeZGo',
-    quantity: 1,
-  },
-  {
-    id: '2',
-    name: '蓝莓蛋糕',
-    price: 28.9,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBUodXWICxiWGsqmyuEAoNOZ_99aEZaPgRLSV-M0hyNSm7ytV1obvw3ClROPbQYAGQUN_CRpRQ5zlZV06G-C5W0xaHQwDUxq_nvFm2w0tvMhkAL23Xj4aNCLAOVVDQBOhJ5ZzZ5s8RFe73Q5bqrqLa8cwabIDCuw31EJVv-yRUW1l9TdBp-lOCeJ9_sH-JLqgwtFpmFtvygl-sYp_SSJoZ0nV8MDxiZBYZUohB_mLoy_-w9MKdaOpSHVZWxJfZpjAGwvovTPATvM2Md',
-    quantity: 1,
-  },
-  {
-    id: '3',
-    name: '摩卡咖啡',
-    price: 28.9,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA2ezoTbqiqse-TzztWOXAv6BhbP7y2Q59aOw1I-kinfTDvSbwOTxXACvC68Xcrs6-pgz-2gFkVTqxusP6UGYzkVB8Vz4RvIFkBTDTebrYYvsjlKpU2DyG4tLdBZgB2aFQuz2aIV7uazXXSH_evA5JyxRAIqZEmmD3iReoLMHWom4DgtJFTcjaL-wdbbuLkgK0XDZqifxIvDTbXq_L5YckqsBvT9BaSdguXIlvamvos38VIdCz4pcXyhA_DJpuMrewyn8yjxQtcGASk',
-    quantity: 1,
-  },
-  {
-    id: '4',
-    name: '摩卡咖啡',
-    price: 28.9,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA-syXNPdhNuYu2RqbH571dR8yIyeVKjg6G3mUlVGhpToPlAKpZnhIuOdEavPkQy_pXqLNpfpWkWtdQIk5Gfa9Yb0NQamdKmQ5RooKZlllIL9k-2fDzz3B3OigeC01jELuUys70Gq92JVT3w7DlHqmu18zDLiy4hufrHPPn-xGV5eBQRzNfABTF-SQ49ja0jnCzXirHFtP5ilZxwzKqSwqnwFzEbf4FkTLpKum5-uik0juYfENyyZ2SXSlmehNW4XKPDXkGOdv6va8r',
-    quantity: 1,
-  },
-  {
-    id: '5',
-    name: '鲜果塔',
-    price: 28.9,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDtebsgnf125URHevqiO-eNc4R5mWCjCWpyI7WQHbr9MpvwXEPd97ge05yuRIF6CANUCb29fkSXjyOa1dX-rmH1P388r45_MowB0tHITd7AfzUbYbu-QZSh925Xpw_69V2eBr4E0cj929pvMXnwAEI0kos6X6wmaeZvwpe6kTJAj_q-BkQrFjswPfLab_2BcYv_fjgfdb3Iz_J72J2aIYPPBvXMaOZys8eN1-UsWyjnrEA38VAA5loslqqfGuP_UZmdz8GgonotPgFB',
-    quantity: 1,
-  },
-  {
-    id: '6',
-    name: '甜玫甜心蛋糕',
-    price: 28.9,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAbXirsWXP1ggbztg9CeWcmPTCy4Khi98q236F1GwSLNDt0cfQfwpm7JWh4SyJOlLlJME5Om6kjHiYBMMyt7WZg-ji8xR4_-j91GJHxiL7d8_Rk250vqiOTMa3DEDOOfbw7534NMQ1yrBpCo05WUdzZESb-RVKCILwxxmuI2Kfvh4n1CP-UQ9penMGo0jz8WF9amqW9SFzyQBBQSsMFO5PSOVGdKvLigr6an8gD5e8eTUeHtKvRGzjrozuIjSqxAErb6gTgZanyp9a1',
-    quantity: 1,
-  },
-  {
-    id: '7',
-    name: '摩卡咖啡',
-    price: 28.9,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDgcIa9KU4S3n1eeZD5aQ0QX09x-2ZxaeHy1lPXsW8NahyuZP3bPt29omCccaLsT_h21fmVVjtqCqs_zw3GYqX8Tl-YOzrhv-lu0gEALUXyx3Y3TRExJAHo5A9q7ebbmnZ6owT5GwO4xI-DPB-wvnh3i3WQlYRmecgRFle3BHucCUZuNwpJUgJujr6VCbFPi_N53SH7KBjh14-HgNx68EKQJ0K77qrmKvjsB3pWFEPoBXht74LojyEXd0_AIG2Q4xjuXe-929D8BpzJ',
-    quantity: 1,
-  },
-  {
-    id: '8',
-    name: '麦祺蛋糕',
-    price: 28.9,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDzALhkICAinsfU_d3RGfd_xuiqRfBafQFiArGaOSPoXbss2B5JH2uInopl_Jy9q96IJDrvpaohW44aiJ4VZl0f_hjKntEkk3lEQ5QaLPM6qEkC0DY-Mj0cE7_L9FOLKrOGph0llM8-6OwB1EUzMRXJzm1MGArrunoMdf4XrpA6CYqKlKF3hgeOBID_r0AFTZ2T8OLwi8ugxF5aFsRLyDw4UVcxvt0V5omEj0YVhMYEFO40QOXilm5dq8EN2IwK0ZcNfJNa_YDcHf-_',
-    quantity: 1,
-  },
-  {
-    id: '9',
-    name: '意式浓缩',
-    price: 18.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAGhufoySu1LSMMqEf1TVK4tcpsx9q0LNXTC0ViFJ4VdQ2bQBSHi4Lz7LrBPD1_aZSTlW-WjBpPtzW4mKeTJ1QbBnN5shCN8-wT_kzxXdwMrEywQZ3sGGDzgnzzh7VyuFLfZcHBHm90c2Tvr9Moi2UI_nGodYJx3IjI6yEZg5Iqs-qM2uDtyX0Ywa1PmRFLwejkzReXCU1QidI2ijs8ebZC7p60KFgkqzi8EnjpHae-J4_WmHTtauGLl6mNPpG0eJm31qXzZrlBeZGo',
-    quantity: 1,
-  },
-  {
-    id: '10',
-    name: '卡布奇诺',
-    price: 32.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA2ezoTbqiqse-TzztWOXAv6BhbP7y2Q59aOw1I-kinfTDvSbwOTxXACvC68Xcrs6-pgz-2gFkVTqxusP6UGYzkVB8Vz4RvIFkBTDTebrYYvsjlKpU2DyG4tLdBZgB2aFQuz2aIV7uazXXSH_evA5JyxRAIqZEmmD3iReoLMHWom4DgtJFTcjaL-wdbbuLkgK0XDZqifxIvDTbXq_L5YckqsBvT9BaSdguXIlvamvos38VIdCz4pcXyhA_DJpuMrewyn8yjxQtcGASk',
-    quantity: 1,
-  },
-  {
-    id: '11',
-    name: '提拉米苏',
-    price: 38.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBUodXWICxiWGsqmyuEAoNOZ_99aEZaPgRLSV-M0hyNSm7ytV1obvw3ClROPbQYAGQUN_CRpRQ5zlZV06G-C5W0xaHQwDUxq_nvFm2w0tvMhkAL23Xj4aNCLAOVVDQBOhJ5ZzZ5s8RFe73Q5bqrqLa8cwabIDCuw31EJVv-yRUW1l9TdBp-lOCeJ9_sH-JLqgwtFpmFtvygl-sYp_SSJoZ0nV8MDxiZBYZUohB_mLoy_-w9MKdaOpSHVZWxJfZpjAGwvovTPATvM2Md',
-    quantity: 1,
-  },
-  {
-    id: '12',
-    name: '美式咖啡',
-    price: 22.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA-syXNPdhNuYu2RqbH571dR8yIyeVKjg6G3mUlVGhpToPlAKpZnhIuOdEavPkQy_pXqLNpfpWkWtdQIk5Gfa9Yb0NQamdKmQ5RooKZlllIL9k-2fDzz3B3OigeC01jELuUys70Gq92JVT3w7DlHqmu18zDLiy4hufrHPPn-xGV5eBQRzNfABTF-SQ49ja0jnCzXirHFtP5ilZxwzKqSwqnwFzEbf4FkTLpKum5-uik0juYfENyyZ2SXSlmehNW4XKPDXkGOdv6va8r',
-    quantity: 1,
-  },
-  {
-    id: '13',
-    name: '焦糖玛奇朵',
-    price: 35.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDgcIa9KU4S3n1eeZD5aQ0QX09x-2ZxaeHy1lPXsW8NahyuZP3bPt29omCccaLsT_h21fmVVjtqCqs_zw3GYqX8Tl-YOzrhv-lu0gEALUXyx3Y3TRExJAHo5A9q7ebbmnZ6owT5GwO4xI-DPB-wvnh3i3WQlYRmecgRFle3BHucCUZuNwpJUgJujr6VCbFPi_N53SH7KBjh14-HgNx68EKQJ0K77qrmKvjsB3pWFEPoBXht74LojyEXd0_AIG2Q4xjuXe-929D8BpzJ',
-    quantity: 1,
-  },
-  {
-    id: '14',
-    name: '拿铁咖啡',
-    price: 30.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAGhufoySu1LSMMqEf1TVK4tcpsx9q0LNXTC0ViFJ4VdQ2bQBSHi4Lz7LrBPD1_aZSTlW-WjBpPtzW4mKeTJ1QbBnN5shCN8-wT_kzxXdwMrEywQZ3sGGDzgnzzh7VyuFLfZcHBHm90c2Tvr9Moi2UI_nGodYJx3IjI6yEZg5Iqs-qM2uDtyX0Ywa1PmRFLwejkzReXCU1QidI2ijs8ebZC7p60KFgkqzi8EnjpHae-J4_WmHTtauGLl6mNPpG0eJm31qXzZrlBeZGo',
-    quantity: 1,
-  },
-  {
-    id: '15',
-    name: '抹茶拿铁',
-    price: 34.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDzALhkICAinsfU_d3RGfd_xuiqRfBafQFiArGaOSPoXbss2B5JH2uInopl_Jy9q96IJDrvpaohW44aiJ4VZl0f_hjKntEkk3lEQ5QaLPM6qEkC0DY-Mj0cE7_L9FOLKrOGph0llM8-6OwB1EUzMRXJzm1MGArrunoMdf4XrpA6CYqKlKF3hgeOBID_r0AFTZ2T8OLwi8ugxF5aFsRLyDw4UVcxvt0V5omEj0YVhMYEFO40QOXilm5dq8EN2IwK0ZcNfJNa_YDcHf-_',
-    quantity: 1,
-  },
-  {
-    id: '16',
-    name: '红丝绒蛋糕',
-    price: 42.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAbXirsWXP1ggbztg9CeWcmPTCy4Khi98q236F1GwSLNDt0cfQfwpm7JWh4SyJOlLlJME5Om6kjHiYBMMyt7WZg-ji8xR4_-j91GJHxiL7d8_Rk250vqiOTMa3DEDOOfbw7534NMQ1yrBpCo05WUdzZESb-RVKCILwxxmuI2Kfvh4n1CP-UQ9penMGo0jz8WF9amqW9SFzyQBBQSsMFO5PSOVGdKvLigr6an8gD5e8eTUeHtKvRGzjrozuIjSqxAErb6gTgZanyp9a1',
-    quantity: 1,
-  },
-  {
-    id: '17',
-    name: '草莓华夫饼',
-    price: 45.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBUodXWICxiWGsqmyuEAoNOZ_99aEZaPgRLSV-M0hyNSm7ytV1obvw3ClROPbQYAGQUN_CRpRQ5zlZV06G-C5W0xaHQwDUxq_nvFm2w0tvMhkAL23Xj4aNCLAOVVDQBOhJ5ZzZ5s8RFe73Q5bqrqLa8cwabIDCuw31EJVv-yRUW1l9TdBp-lOCeJ9_sH-JLqgwtFpmFtvygl-sYp_SSJoZ0nV8MDxiZBYZUohB_mLoy_-w9MKdaOpSHVZWxJfZpjAGwvovTPATvM2Md',
-    quantity: 1,
-  },
-  {
-    id: '18',
-    name: '经典舒芙蕾',
-    price: 58.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDtebsgnf125URHevqiO-eNc4R5mWCjCWpyI7WQHbr9MpvwXEPd97ge05yuRIF6CANUCb29fkSXjyOa1dX-rmH1P388r45_MowB0tHITd7AfzUbYbu-QZSh925Xpw_69V2eBr4E0cj929pvMXnwAEI0kos6X6wmaeZvwpe6kTJAj_q-BkQrFjswPfLab_2BcYv_fjgfdb3Iz_J72J2aIYPPBvXMaOZys8eN1-UsWyjnrEA38VAA5loslqqfGuP_UZmdz8GgonotPgFB',
-    quantity: 1,
-  },
-  {
-    id: '19',
-    name: '杨枝甘露',
-    price: 28.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDzALhkICAinsfU_d3RGfd_xuiqRfBafQFiArGaOSPoXbss2B5JH2uInopl_Jy9q96IJDrvpaohW44aiJ4VZl0f_hjKntEkk3lEQ5QaLPM6qEkC0DY-Mj0cE7_L9FOLKrOGph0llM8-6OwB1EUzMRXJzm1MGArrunoMdf4XrpA6CYqKlKF3hgeOBID_r0AFTZ2T8OLwi8ugxF5aFsRLyDw4UVcxvt0V5omEj0YVhMYEFO40QOXilm5dq8EN2IwK0ZcNfJNa_YDcHf-_',
-    quantity: 1,
-  },
-  {
-    id: '20',
-    name: '多肉葡萄',
-    price: 32.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA2ezoTbqiqse-TzztWOXAv6BhbP7y2Q59aOw1I-kinfTDvSbwOTxXACvC68Xcrs6-pgz-2gFkVTqxusP6UGYzkVB8Vz4RvIFkBTDTebrYYvsjlKpU2DyG4tLdBZgB2aFQuz2aIV7uazXXSH_evA5JyxRAIqZEmmD3iReoLMHWom4DgtJFTcjaL-wdbbuLkgK0XDZqifxIvDTbXq_L5YckqsBvT9BaSdguXIlvamvos38VIdCz4pcXyhA_DJpuMrewyn8yjxQtcGASk',
-    quantity: 1,
-  },
-  {
-    id: '21',
-    name: '芝芝莓莓',
-    price: 34.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA-syXNPdhNuYu2RqbH571dR8yIyeVKjg6G3mUlVGhpToPlAKpZnhIuOdEavPkQy_pXqLNpfpWkWtdQIk5Gfa9Yb0NQamdKmQ5RooKZlllIL9k-2fDzz3B3OigeC01jELuUys70Gq92JVT3w7DlHqmu18zDLiy4hufrHPPn-xGV5eBQRzNfABTF-SQ49ja0jnCzXirHFtP5ilZxwzKqSwqnwFzEbf4FkTLpKum5-uik0juYfENyyZ2SXSlmehNW4XKPDXkGOdv6va8r',
-    quantity: 1,
-  },
-  {
-    id: '22',
-    name: '金凤茶王',
-    price: 26.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDgcIa9KU4S3n1eeZD5aQ0QX09x-2ZxaeHy1lPXsW8NahyuZP3bPt29omCccaLsT_h21fmVVjtqCqs_zw3GYqX8Tl-YOzrhv-lu0gEALUXyx3Y3TRExJAHo5A9q7ebbmnZ6owT5GwO4xI-DPB-wvnh3i3WQlYRmecgRFle3BHucCUZuNwpJUgJujr6VCbFPi_N53SH7KBjh14-HgNx68EKQJ0K77qrmKvjsB3pWFEPoBXht74LojyEXd0_AIG2Q4xjuXe-929D8BpzJ',
-    quantity: 1,
-  },
-  {
-    id: '23',
-    name: '满杯红柚',
-    price: 28.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAGhufoySu1LSMMqEf1TVK4tcpsx9q0LNXTC0ViFJ4VdQ2bQBSHi4Lz7LrBPD1_aZSTlW-WjBpPtzW4mKeTJ1QbBnN5shCN8-wT_kzxXdwMrEywQZ3sGGDzgnzzh7VyuFLfZcHBHm90c2Tvr9Moi2UI_nGodYJx3IjI6yEZg5Iqs-qM2uDtyX0Ywa1PmRFLwejkzReXCU1QidI2ijs8ebZC7p60KFgkqzi8EnjpHae-J4_WmHTtauGLl6mNPpG0eJm31qXzZrlBeZGo',
-    quantity: 1,
-  },
-  {
-    id: '24',
-    name: '气泡冰咖啡',
-    price: 36.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA2ezoTbqiqse-TzztWOXAv6BhbP7y2Q59aOw1I-kinfTDvSbwOTxXACvC68Xcrs6-pgz-2gFkVTqxusP6UGYzkVB8Vz4RvIFkBTDTebrYYvsjlKpU2DyG4tLdBZgB2aFQuz2aIV7uazXXSH_evA5JyxRAIqZEmmD3iReoLMHWom4DgtJFTcjaL-wdbbuLkgK0XDZqifxIvDTbXq_L5YckqsBvT9BaSdguXIlvamvos38VIdCz4pcXyhA_DJpuMrewyn8yjxQtcGASk',
-    quantity: 1,
-  },
-  {
-    id: '25',
-    name: '香草奶昔',
-    price: 38.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAGhufoySu1LSMMqEf1TVK4tcpsx9q0LNXTC0ViFJ4VdQ2bQBSHi4Lz7LrBPD1_aZSTlW-WjBpPtzW4mKeTJ1QbBnN5shCN8-wT_kzxXdwMrEywQZ3sGGDzgnzzh7VyuFLfZcHBHm90c2Tvr9Moi2UI_nGodYJx3IjI6yEZg5Iqs-qM2uDtyX0Ywa1PmRFLwejkzReXCU1QidI2ijs8ebZC7p60KFgkqzi8EnjpHae-J4_WmHTtauGLl6mNPpG0eJm31qXzZrlBeZGo',
-    quantity: 1,
-  },
-  {
-    id: '26',
-    name: '蓝莓华夫饼',
-    price: 48.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBUodXWICxiWGsqmyuEAoNOZ_99aEZaPgRLSV-M0hyNSm7ytV1obvw3ClROPbQYAGQUN_CRpRQ5zlZV06G-C5W0xaHQwDUxq_nvFm2w0tvMhkAL23Xj4aNCLAOVVDQBOhJ5ZzZ5s8RFe73Q5bqrqLa8cwabIDCuw31EJVv-yRUW1l9TdBp-lOCeJ9_sH-JLqgwtFpmFtvygl-sYp_SSJoZ0nV8MDxiZBYZUohB_mLoy_-w9MKdaOpSHVZWxJfZpjAGwvovTPATvM2Md',
-    quantity: 1,
-  },
-  {
-    id: '27',
-    name: '混合浆果杯',
-    price: 34.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDtebsgnf125URHevqiO-eNc4R5mWCjCWpyI7WQHbr9MpvwXEPd97ge05yuRIF6CANUCb29fkSXjyOa1dX-rmH1P388r45_MowB0tHITd7AfzUbYbu-QZSh925Xpw_69V2eBr4E0cj929pvMXnwAEI0kos6X6wmaeZvwpe6kTJAj_q-BkQrFjswPfLab_2BcYv_fjgfdb3Iz_J72J2aIYPPBvXMaOZys8eN1-UsWyjnrEA38VAA5loslqqfGuP_UZmdz8GgonotPgFB',
-    quantity: 1,
-  },
-  {
-    id: '28',
-    name: '芝士蛋糕',
-    price: 44.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAbXirsWXP1ggbztg9CeWcmPTCy4Khi98q236F1GwSLNDt0cfQfwpm7JWh4SyJOlLlJME5Om6kjHiYBMMyt7WZg-ji8xR4_-j91GJHxiL7d8_Rk250vqiOTMa3DEDOOfbw7534NMQ1yrBpCo05WUdzZESb-RVKCILwxxmuI2Kfvh4n1CP-UQ9penMGo0jz8WF9amqW9SFzyQBBQSsMFO5PSOVGdKvLigr6an8gD5e8eTUeHtKvRGzjrozuIjSqxAErb6gTgZanyp9a1',
-    quantity: 1,
-  },
-  {
-    id: '29',
-    name: '法式吐司',
-    price: 40.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDzALhkICAinsfU_d3RGfd_xuiqRfBafQFiArGaOSPoXbss2B5JH2uInopl_Jy9q96IJDrvpaohW44aiJ4VZl0f_hjKntEkk3lEQ5QaLPM6qEkC0DY-Mj0cE7_L9FOLKrOGph0llM8-6OwB1EUzMRXJzm1MGArrunoMdf4XrpA6CYqKlKF3hgeOBID_r0AFTZ2T8OLwi8ugxF5aFsRLyDw4UVcxvt0V5omEj0YVhMYEFO40QOXilm5dq8EN2IwK0ZcNfJNa_YDcHf-_',
-    quantity: 1,
-  },
-  {
-    id: '30',
-    name: '抹茶红豆冰',
-    price: 36.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA2ezoTbqiqse-TzztWOXAv6BhbP7y2Q59aOw1I-kinfTDvSbwOTxXACvC68Xcrs6-pgz-2gFkVTqxusP6UGYzkVB8Vz4RvIFkBTDTebrYYvsjlKpU2DyG4tLdBZgB2aFQuz2aIV7uazXXSH_evA5JyxRAIqZEmmD3iReoLMHWom4DgtJFTcjaL-wdbbuLkgK0XDZqifxIvDTbXq_L5YckqsBvT9BaSdguXIlvamvos38VIdCz4pcXyhA_DJpuMrewyn8yjxQtcGASk',
-    quantity: 1,
-  },
-  {
-    id: '31',
-    name: '巧克力松饼',
-    price: 32.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA-syXNPdhNuYu2RqbH571dR8yIyeVKjg6G3mUlVGhpToPlAKpZnhIuOdEavPkQy_pXqLNpfpWkWtdQIk5Gfa9Yb0NQamdKmQ5RooKZlllIL9k-2fDzz3B3OigeC01jELuUys70Gq92JVT3w7DlHqmu18zDLiy4hufrHPPn-xGV5eBQRzNfABTF-SQ49ja0jnCzXirHFtP5ilZxwzKqSwqnwFzEbf4FkTLpKum5-uik0juYfENyyZ2SXSlmehNW4XKPDXkGOdv6va8r',
-    quantity: 1,
-  },
-  {
-    id: '32',
-    name: '香蕉船',
-    price: 52.0,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDgcIa9KU4S3n1eeZD5aQ0QX09x-2ZxaeHy1lPXsW8NahyuZP3bPt29omCccaLsT_h21fmVVjtqCqs_zw3GYqX8Tl-YOzrhv-lu0gEALUXyx3Y3TRExJAHo5A9q7ebbmnZ6owT5GwO4xI-DPB-wvnh3i3WQlYRmecgRFle3BHucCUZuNwpJUgJujr6VCbFPi_N53SH7KBjh14-HgNx68EKQJ0K77qrmKvjsB3pWFEPoBXht74LojyEXd0_AIG2Q4xjuXe-929D8BpzJ',
-    quantity: 1,
-  },
-  { id: '33', name: '咸焦糖拿铁', price: 34.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAGhufoySu1LSMMqEf1TVK4tcpsx9q0LNXTC0ViFJ4VdQ2bQBSHi4Lz7LrBPD1_aZSTlW-WjBpPtzW4mKeTJ1QbBnN5shCN8-wT_kzxXdwMrEywQZ3sGGDzgnzzh7VyuFLfZcHBHm90c2Tvr9Moi2UI_nGodYJx3IjI6yEZg5Iqs-qM2uDtyX0Ywa1PmRFLwejkzReXCU1QidI2ijs8ebZC7p60KFgkqzi8EnjpHae-J4_WmHTtauGLl6mNPpG0eJm31qXzZrlBeZGo', quantity: 1 },
-  { id: '34', name: '黑糖波波茶', price: 28.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBUodXWICxiWGsqmyuEAoNOZ_99aEZaPgRLSV-M0hyNSm7ytV1obvw3ClROPbQYAGQUN_CRpRQ5zlZV06G-C5W0xaHQwDUxq_nvFm2w0tvMhkAL23Xj4aNCLAOVVDQBOhJ5ZzZ5s8RFe73Q5bqrqLa8cwabIDCuw31EJVv-yRUW1l9TdBp-lOCeJ9_sH-JLqgwtFpmFtvygl-sYp_SSJoZ0nV8MDxiZBYZUohB_mLoy_-w9MKdaOpSHVZWxJfZpjAGwvovTPATvM2Md', quantity: 1 },
-  { id: '35', name: '红丝绒奶茶', price: 30.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA2ezoTbqiqse-TzztWOXAv6BhbP7y2Q59aOw1I-kinfTDvSbwOTxXACvC68Xcrs6-pgz-2gFkVTqxusP6UGYzkVB8Vz4RvIFkBTDTebrYYvsjlKpU2DyG4tLdBZgB2aFQuz2aIV7uazXXSH_evA5JyxRAIqZEmmD3iReoLMHWom4DgtJFTcjaL-wdbbuLkgK0XDZqifxIvDTbXq_L5YckqsBvT9BaSdguXIlvamvos38VIdCz4pcXyhA_DJpuMrewyn8yjxQtcGASk', quantity: 1 },
-  { id: '36', name: '奥利奥奶昔', price: 36.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA-syXNPdhNuYu2RqbH571dR8yIyeVKjg6G3mUlVGhpToPlAKpZnhIuOdEavPkQy_pXqLNpfpWkWtdQIk5Gfa9Yb0NQamdKmQ5RooKZlllIL9k-2fDzz3B3OigeC01jELuUys70Gq92JVT3w7DlHqmu18zDLiy4hufrHPPn-xGV5eBQRzNfABTF-SQ49ja0jnCzXirHFtP5ilZxwzKqSwqnwFzEbf4FkTLpKum5-uik0juYfENyyZ2SXSlmehNW4XKPDXkGOdv6va8r', quantity: 1 },
-  { id: '37', name: '芝士乌龙', price: 26.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDtebsgnf125URHevqiO-eNc4R5mWCjCWpyI7WQHbr9MpvwXEPd97ge05yuRIF6CANUCb29fkSXjyOa1dX-rmH1P388r45_MowB0tHITd7AfzUbYbu-QZSh925Xpw_69V2eBr4E0cj929pvMXnwAEI0kos6X6wmaeZvwpe6kTJAj_q-BkQrFjswPfLab_2BcYv_fjgfdb3Iz_J72J2aIYPPBvXMaOZys8eN1-UsWyjnrEA38VAA5loslqqfGuP_UZmdz8GgonotPgFB', quantity: 1 },
-  { id: '38', name: '四季春茶', price: 22.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAbXirsWXP1ggbztg9CeWcmPTCy4Khi98q236F1GwSLNDt0cfQfwpm7JWh4SyJOlLlJME5Om6kjHiYBMMyt7WZg-ji8xR4_-j91GJHxiL7d8_Rk250vqiOTMa3DEDOOfbw7534NMQ1yrBpCo05WUdzZESb-RVKCILwxxmuI2Kfvh4n1CP-UQ9penMGo0jz8WF9amqW9SFzyQBBQSsMFO5PSOVGdKvLigr6an8gD5e8eTUeHtKvRGzjrozuIjSqxAErb6gTgZanyp9a1', quantity: 1 },
-  { id: '39', name: '葡萄气泡饮', price: 24.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDgcIa9KU4S3n1eeZD5aQ0QX09x-2ZxaeHy1lPXsW8NahyuZP3bPt29omCccaLsT_h21fmVVjtqCqs_zw3GYqX8Tl-YOzrhv-lu0gEALUXyx3Y3TRExJAHo5A9q7ebbmnZ6owT5GwO4xI-DPB-wvnh3i3WQlYRmecgRFle3BHucCUZuNwpJUgJujr6VCbFPi_N53SH7KBjh14-HgNx68EKQJ0K77qrmKvjsB3pWFEPoBXht74LojyEXd0_AIG2Q4xjuXe-929D8BpzJ', quantity: 1 },
-  { id: '40', name: '草莓圣代', price: 18.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDzALhkICAinsfU_d3RGfd_xuiqRfBafQFiArGaOSPoXbss2B5JH2uInopl_Jy9q96IJDrvpaohW44aiJ4VZl0f_hjKntEkk3lEQ5QaLPM6qEkC0DY-Mj0cE7_L9FOLKrOGph0llM8-6OwB1EUzMRXJzm1MGArrunoMdf4XrpA6CYqKlKF3hgeOBID_r0AFTZ2T8OLwi8ugxF5aFsRLyDw4UVcxvt0V5omEj0YVhMYEFO40QOXilm5dq8EN2IwK0ZcNfJNa_YDcHf-_', quantity: 1 },
-  { id: '41', name: '经典可乐', price: 10.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAGhufoySu1LSMMqEf1TVK4tcpsx9q0LNXTC0ViFJ4VdQ2bQBSHi4Lz7LrBPD1_aZSTlW-WjBpPtzW4mKeTJ1QbBnN5shCN8-wT_kzxXdwMrEywQZ3sGGDzgnzzh7VyuFLfZcHBHm90c2Tvr9Moi2UI_nGodYJx3IjI6yEZg5Iqs-qM2uDtyX0Ywa1PmRFLwejkzReXCU1QidI2ijs8ebZC7p60KFgkqzi8EnjpHae-J4_WmHTtauGLl6mNPpG0eJm31qXzZrlBeZGo', quantity: 1 },
-  { id: '42', name: '雪碧柠檬', price: 10.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBUodXWICxiWGsqmyuEAoNOZ_99aEZaPgRLSV-M0hyNSm7ytV1obvw3ClROPbQYAGQUN_CRpRQ5zlZV06G-C5W0xaHQwDUxq_nvFm2w0tvMhkAL23Xj4aNCLAOVVDQBOhJ5ZzZ5s8RFe73Q5bqrqLa8cwabIDCuw31EJVv-yRUW1l9TdBp-lOCeJ9_sH-JLqgwtFpmFtvygl-sYp_SSJoZ0nV8MDxiZBYZUohB_mLoy_-w9MKdaOpSHVZWxJfZpjAGwvovTPATvM2Md', quantity: 1 },
-  { id: '43', name: '美年达', price: 10.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA2ezoTbqiqse-TzztWOXAv6BhbP7y2Q59aOw1I-kinfTDvSbwOTxXACvC68Xcrs6-pgz-2gFkVTqxusP6UGYzkVB8Vz4RvIFkBTDTebrYYvsjlKpU2DyG4tLdBZgB2aFQuz2aIV7uazXXSH_evA5JyxRAIqZEmmD3iReoLMHWom4DgtJFTcjaL-wdbbuLkgK0XDZqifxIvDTbXq_L5YckqsBvT9BaSdguXIlvamvos38VIdCz4pcXyhA_DJpuMrewyn8yjxQtcGASk', quantity: 1 },
-  { id: '44', name: '柠檬红茶', price: 15.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA-syXNPdhNuYu2RqbH571dR8yIyeVKjg6G3mUlVGhpToPlAKpZnhIuOdEavPkQy_pXqLNpfpWkWtdQIk5Gfa9Yb0NQamdKmQ5RooKZlllIL9k-2fDzz3B3OigeC01jELuUys70Gq92JVT3w7DlHqmu18zDLiy4hufrHPPn-xGV5eBQRzNfABTF-SQ49ja0jnCzXirHFtP5ilZxwzKqSwqnwFzEbf4FkTLpKum5-uik0juYfENyyZ2SXSlmehNW4XKPDXkGOdv6va8r', quantity: 1 },
-  { id: '45', name: '茉莉花茶', price: 12.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDtebsgnf125URHevqiO-eNc4R5mWCjCWpyI7WQHbr9MpvwXEPd97ge05yuRIF6CANUCb29fkSXjyOa1dX-rmH1P388r45_MowB0tHITd7AfzUbYbu-QZSh925Xpw_69V2eBr4E0cj929pvMXnwAEI0kos6X6wmaeZvwpe6kTJAj_q-BkQrFjswPfLab_2BcYv_fjgfdb3Iz_J72J2aIYPPBvXMaOZys8eN1-UsWyjnrEA38VAA5loslqqfGuP_UZmdz8GgonotPgFB', quantity: 1 },
-  { id: '46', name: '拿铁咖啡', price: 30.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAbXirsWXP1ggbztg9CeWcmPTCy4Khi98q236F1GwSLNDt0cfQfwpm7JWh4SyJOlLlJME5Om6kjHiYBMMyt7WZg-ji8xR4_-j91GJHxiL7d8_Rk250vqiOTMa3DEDOOfbw7534NMQ1yrBpCo05WUdzZESb-RVKCILwxxmuI2Kfvh4n1CP-UQ9penMGo0jz8WF9amqW9SFzyQBBQSsMFO5PSOVGdKvLigr6an8gD5e8eTUeHtKvRGzjrozuIjSqxAErb6gTgZanyp9a1', quantity: 1 },
-  { id: '47', name: '抹茶拿铁', price: 34.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDgcIa9KU4S3n1eeZD5aQ0QX09x-2ZxaeHy1lPXsW8NahyuZP3bPt29omCccaLsT_h21fmVVjtqCqs_zw3GYqX8Tl-YOzrhv-lu0gEALUXyx3Y3TRExJAHo5A9q7ebbmnZ6owT5GwO4xI-DPB-wvnh3i3WQlYRmecgRFle3BHucCUZuNwpJUgJujr6VCbFPi_N53SH7KBjh14-HgNx68EKQJ0K77qrmKvjsB3pWFEPoBXht74LojyEXd0_AIG2Q4xjuXe-929D8BpzJ', quantity: 1 },
-  { id: '48', name: '燕麦拿铁', price: 36.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDzALhkICAinsfU_d3RGfd_xuiqRfBafQFiArGaOSPoXbss2B5JH2uInopl_Jy9q96IJDrvpaohW44aiJ4VZl0f_hjKntEkk3lEQ5QaLPM6qEkC0DY-Mj0cE7_L9FOLKrOGph0llM8-6OwB1EUzMRXJzm1MGArrunoMdf4XrpA6CYqKlKF3hgeOBID_r0AFTZ2T8OLwi8ugxF5aFsRLyDw4UVcxvt0V5omEj0YVhMYEFO40QOXilm5dq8EN2IwK0ZcNfJNa_YDcHf-_', quantity: 1 },
-  { id: '49', name: '香草拿铁', price: 34.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAGhufoySu1LSMMqEf1TVK4tcpsx9q0LNXTC0ViFJ4VdQ2bQBSHi4Lz7LrBPD1_aZSTlW-WjBpPtzW4mKeTJ1QbBnN5shCN8-wT_kzxXdwMrEywQZ3sGGDzgnzzh7VyuFLfZcHBHm90c2Tvr9Moi2UI_nGodYJx3IjI6yEZg5Iqs-qM2uDtyX0Ywa1PmRFLwejkzReXCU1QidI2ijs8ebZC7p60KFgkqzi8EnjpHae-J4_WmHTtauGLl6mNPpG0eJm31qXzZrlBeZGo', quantity: 1 },
-  { id: '50', name: '焦糖玛奇朵', price: 38.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBUodXWICxiWGsqmyuEAoNOZ_99aEZaPgRLSV-M0hyNSm7ytV1obvw3ClROPbQYAGQUN_CRpRQ5zlZV06G-C5W0xaHQwDUxq_nvFm2w0tvMhkAL23Xj4aNCLAOVVDQBOhJ5ZzZ5s8RFe73Q5bqrqLa8cwabIDCuw31EJVv-yRUW1l9TdBp-lOCeJ9_sH-JLqgwtFpmFtvygl-sYp_SSJoZ0nV8MDxiZBYZUohB_mLoy_-w9MKdaOpSHVZWxJfZpjAGwvovTPATvM2Md', quantity: 1 },
-  { id: '51', name: '布朗尼', price: 25.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA2ezoTbqiqse-TzztWOXAv6BhbP7y2Q59aOw1I-kinfTDvSbwOTxXACvC68Xcrs6-pgz-2gFkVTqxusP6UGYzkVB8Vz4RvIFkBTDTebrYYvsjlKpU2DyG4tLdBZgB2aFQuz2aIV7uazXXSH_evA5JyxRAIqZEmmD3iReoLMHWom4DgtJFTcjaL-wdbbuLkgK0XDZqifxIvDTbXq_L5YckqsBvT9BaSdguXIlvamvos38VIdCz4pcXyhA_DJpuMrewyn8yjxQtcGASk', quantity: 1 },
-  { id: '52', name: '重乳酪蛋糕', price: 32.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA-syXNPdhNuYu2RqbH571dR8yIyeVKjg6G3mUlVGhpToPlAKpZnhIuOdEavPkQy_pXqLNpfpWkWtdQIk5Gfa9Yb0NQamdKmQ5RooKZlllIL9k-2fDzz3B3OigeC01jELuUys70Gq92JVT3w7DlHqmu18zDLiy4hufrHPPn-xGV5eBQRzNfABTF-SQ49ja0jnCzXirHFtP5ilZxwzKqSwqnwFzEbf4FkTLpKum5-uik0juYfENyyZ2SXSlmehNW4XKPDXkGOdv6va8r', quantity: 1 },
-  { id: '53', name: '黑森林蛋糕', price: 35.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDtebsgnf125URHevqiO-eNc4R5mWCjCWpyI7WQHbr9MpvwXEPd97ge05yuRIF6CANUCb29fkSXjyOa1dX-rmH1P388r45_MowB0tHITd7AfzUbYbu-QZSh925Xpw_69V2eBr4E0cj929pvMXnwAEI0kos6X6wmaeZvwpe6kTJAj_q-BkQrFjswPfLab_2BcYv_fjgfdb3Iz_J72J2aIYPPBvXMaOZys8eN1-UsWyjnrEA38VAA5loslqqfGuP_UZmdz8GgonotPgFB', quantity: 1 },
-  { id: '54', name: '芒果班戟', price: 28.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAbXirsWXP1ggbztg9CeWcmPTCy4Khi98q236F1GwSLNDt0cfQfwpm7JWh4SyJOlLlJME5Om6kjHiYBMMyt7WZg-ji8xR4_-j91GJHxiL7d8_Rk250vqiOTMa3DEDOOfbw7534NMQ1yrBpCo05WUdzZESb-RVKCILwxxmuI2Kfvh4n1CP-UQ9penMGo0jz8WF9amqW9SFzyQBBQSsMFO5PSOVGdKvLigr6an8gD5e8eTUeHtKvRGzjrozuIjSqxAErb6gTgZanyp9a1', quantity: 1 },
-  { id: '55', name: '榴莲班戟', price: 32.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDgcIa9KU4S3n1eeZD5aQ0QX09x-2ZxaeHy1lPXsW8NahyuZP3bPt29omCccaLsT_h21fmVVjtqCqs_zw3GYqX8Tl-YOzrhv-lu0gEALUXyx3Y3TRExJAHo5A9q7ebbmnZ6owT5GwO4xI-DPB-wvnh3i3WQlYRmecgRFle3BHucCUZuNwpJUgJujr6VCbFPi_N53SH7KBjh14-HgNx68EKQJ0K77qrmKvjsB3pWFEPoBXht74LojyEXd0_AIG2Q4xjuXe-929D8BpzJ', quantity: 1 },
-  { id: '56', name: '草莓大福', price: 15.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDzALhkICAinsfU_d3RGfd_xuiqRfBafQFiArGaOSPoXbss2B5JH2uInopl_Jy9q96IJDrvpaohW44aiJ4VZl0f_hjKntEkk3lEQ5QaLPM6qEkC0DY-Mj0cE7_L9FOLKrOGph0llM8-6OwB1EUzMRXJzm1MGArrunoMdf4XrpA6CYqKlKF3hgeOBID_r0AFTZ2T8OLwi8ugxF5aFsRLyDw4UVcxvt0V5omEj0YVhMYEFO40QOXilm5dq8EN2IwK0ZcNfJNa_YDcHf-_', quantity: 1 },
-  { id: '57', name: '红豆沙', price: 12.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAGhufoySu1LSMMqEf1TVK4tcpsx9q0LNXTC0ViFJ4VdQ2bQBSHi4Lz7LrBPD1_aZSTlW-WjBpPtzW4mKeTJ1QbBnN5shCN8-wT_kzxXdwMrEywQZ3sGGDzgnzzh7VyuFLfZcHBHm90c2Tvr9Moi2UI_nGodYJx3IjI6yEZg5Iqs-qM2uDtyX0Ywa1PmRFLwejkzReXCU1QidI2ijs8ebZC7p60KFgkqzi8EnjpHae-J4_WmHTtauGLl6mNPpG0eJm31qXzZrlBeZGo', quantity: 1 },
-  { id: '58', name: '芝麻糊', price: 12.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBUodXWICxiWGsqmyuEAoNOZ_99aEZaPgRLSV-M0hyNSm7ytV1obvw3ClROPbQYAGQUN_CRpRQ5zlZV06G-C5W0xaHQwDUxq_nvFm2w0tvMhkAL23Xj4aNCLAOVVDQBOhJ5ZzZ5s8RFe73Q5bqrqLa8cwabIDCuw31EJVv-yRUW1l9TdBp-lOCeJ9_sH-JLqgwtFpmFtvygl-sYp_SSJoZ0nV8MDxiZBYZUohB_mLoy_-w9MKdaOpSHVZWxJfZpjAGwvovTPATvM2Md', quantity: 1 },
-  { id: '59', name: '双皮奶', price: 18.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA2ezoTbqiqse-TzztWOXAv6BhbP7y2Q59aOw1I-kinfTDvSbwOTxXACvC68Xcrs6-pgz-2gFkVTqxusP6UGYzkVB8Vz4RvIFkBTDTebrYYvsjlKpU2DyG4tLdBZgB2aFQuz2aIV7uazXXSH_evA5JyxRAIqZEmmD3iReoLMHWom4DgtJFTcjaL-wdbbuLkgK0XDZqifxIvDTbXq_L5YckqsBvT9BaSdguXIlvamvos38VIdCz4pcXyhA_DJpuMrewyn8yjxQtcGASk', quantity: 1 },
-  { id: '60', name: '姜撞奶', price: 18.0, image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA-syXNPdhNuYu2RqbH571dR8yIyeVKjg6G3mUlVGhpToPlAKpZnhIuOdEavPkQy_pXqLNpfpWkWtdQIk5Gfa9Yb0NQamdKmQ5RooKZlllIL9k-2fDzz3B3OigeC01jELuUys70Gq92JVT3w7DlHqmu18zDLiy4hufrHPPn-xGV5eBQRzNfABTF-SQ49ja0jnCzXirHFtP5ilZxwzKqSwqnwFzEbf4FkTLpKum5-uik0juYfENyyZ2SXSlmehNW4XKPDXkGOdv6va8r', quantity: 1 },
-];
+  // 转换为数组并按 categoryId 排序
+  return Array.from(categoryMap.entries())
+    .map(([id, info]) => ({
+      id,
+      name: info.name,
+      count: info.count,
+    }))
+    .sort((a, b) => a.id - b.id);
+};
+
+// 生成分类配置
+const CATEGORY_CONFIG: Category[] = generateCategoryConfig(
+  dishesData as Dish[],
+);
+
+// 根据配置生成分类列表
+const categories = CATEGORY_CONFIG.map(cat => cat.name);
+
+// 计算每个分类的起始索引
+const getCategoryStartIndex = (categoryIndex: number): number => {
+  let startIndex = 0;
+  for (let i = 0; i < categoryIndex; i++) {
+    startIndex += CATEGORY_CONFIG[i].count;
+  }
+  return startIndex;
+};
+
+// 将菜品数据转换为商品数据格式
+const convertDishesToProducts = (dishes: Dish[]): Product[] => {
+  return dishes.map(dish => ({
+    id: dish.id,
+    name: dish.name,
+    price: parseFloat(dish.price),
+    image: dish.image,
+    sales: dish.sales,
+    isHot: dish.isHot,
+    categoryName: dish.categoryName,
+    categoryId: dish.categoryId,
+    quantity: 0,
+  }));
+};
+
+// ==================== 卡片尺寸计算 ====================
+// 与 ProductCard 组件保持一致的尺寸计算（使用上面定义的 LEFT_PANEL_WIDTH）
+const CONTAINER_PADDING = 24;
+const COLUMN_GAP = 20;
+const NUM_COLUMNS = 4;
+const CARD_ASPECT_RATIO = 1.2;
+
+// 计算实际卡片高度
+const containerWidth = SCREEN_WIDTH - LEFT_PANEL_WIDTH - CONTAINER_PADDING * 2;
+const columnWidth = containerWidth / NUM_COLUMNS;
+const cardWidth = columnWidth - COLUMN_GAP;
+const ACTUAL_CARD_HEIGHT = cardWidth * CARD_ASPECT_RATIO;
+
+// 商品项高度 (FlashList 的 estimatedItemSize) - 使用实际计算值
+const ITEM_ESTIMATED_SIZE = Math.round(ACTUAL_CARD_HEIGHT);
+
+// 每行高度 = 卡片高度 + 行间距 (ItemSeparatorComponent 的 12px)
+const ROW_HEIGHT = ITEM_ESTIMATED_SIZE + 12;
+
+// 使用导入的菜品数据转换为商品列表
+const mockProducts: Product[] = convertDishesToProducts(dishesData as Dish[]);
 
 // 就餐类型选项
 type DiningType = 'dineIn' | 'takeOut' | 'delivery';
@@ -374,6 +212,12 @@ export default function OrderScreen() {
   const [searchText, setSearchText] = useState('');
   const [note, setNote] = useState('');
 
+  // FlashList 引用
+  const flashListRef = useRef<any>(null);
+
+  // 标记是否正在通过点击分类触发的程序化滚动（防止滚动监听导致分类闪烁）
+  const isScrollingByPress = useRef(false);
+
   // 计算合计
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = 28.8; // 模拟价格
@@ -382,24 +226,92 @@ export default function OrderScreen() {
   // 更新购物车商品数量
   const updateCartItemQuantity = (id: string, delta: number) => {
     setCartItems(items =>
-      items.map(item =>
-        item.id === id
-          ? { ...item, quantity: Math.max(0, item.quantity + delta) }
-          : item
-      ).filter(item => item.quantity > 0)
+      items
+        .map(item =>
+          item.id === id
+            ? { ...item, quantity: Math.max(0, item.quantity + delta) }
+            : item,
+        )
+        .filter(item => item.quantity > 0),
     );
   };
 
   // 更新商品数量
-  const updateProductQuantity = (id: string, delta: number) => {
+  const updateProductQuantity = useCallback((id: string, delta: number) => {
     setProducts(prods =>
       prods.map(prod =>
         prod.id === id
           ? { ...prod, quantity: Math.max(0, prod.quantity + delta) }
-          : prod
-      )
+          : prod,
+      ),
     );
-  };
+  }, []);
+
+  // 使用常量定义的列数
+  const numColumns = NUM_COLUMNS;
+
+  // 处理列表滚动 - 根据位置计算当前分类
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      // 如果是通过点击分类触发的滚动，则不处理（防止闪烁）
+      if (isScrollingByPress.current) {
+        return;
+      }
+
+      const offsetY = event.nativeEvent.contentOffset.y;
+      // 加上一点缓冲，使分类切换更自然
+      const scrollPosition = offsetY + ROW_HEIGHT / 2;
+
+      let accumulatedRows = 0;
+      // 默认设置为最后一个分类，这样当滚动到底部时会正确高亮最后一个分类
+      let currentCategory = CATEGORY_CONFIG.length - 1;
+
+      for (let i = 0; i < CATEGORY_CONFIG.length; i++) {
+        // 计算该分类占用的行数（向上取整）
+        const categoryRows = Math.ceil(CATEGORY_CONFIG[i].count / NUM_COLUMNS);
+        const categoryEndRows = accumulatedRows + categoryRows;
+        const categoryEndPosition = categoryEndRows * ROW_HEIGHT;
+
+        if (scrollPosition < categoryEndPosition) {
+          currentCategory = i;
+          break;
+        }
+        accumulatedRows = categoryEndRows;
+      }
+
+      // 只有当分类变化时才更新状态
+      if (currentCategory !== selectedCategory) {
+        setSelectedCategory(currentCategory);
+      }
+    },
+    [selectedCategory],
+  );
+
+  // 点击分类标签 - 滚动到对应位置
+  const handleCategoryPress = useCallback((categoryIndex: number) => {
+    // 标记正在程序化滚动，防止 handleScroll 导致分类闪烁
+    isScrollingByPress.current = true;
+
+    // 立即设置选中的分类
+    setSelectedCategory(categoryIndex);
+
+    // 计算目标分类之前所有分类占用的总行数
+    let totalRows = 0;
+    for (let i = 0; i < categoryIndex; i++) {
+      totalRows += Math.ceil(CATEGORY_CONFIG[i].count / NUM_COLUMNS);
+    }
+    const targetOffset = totalRows * ROW_HEIGHT;
+
+    flashListRef.current?.scrollToOffset({
+      offset: targetOffset,
+      animated: true,
+    });
+
+    // 滚动动画结束后恢复滚动监听（动画大约 300-500ms）
+    setTimeout(() => {
+      isScrollingByPress.current = false;
+    }, 500);
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -463,8 +375,16 @@ export default function OrderScreen() {
           {/* 列表表头 */}
           <View style={styles.cartListHeader}>
             <Text style={styles.cartListHeaderText}>商品名称</Text>
-            <Text style={[styles.cartListHeaderText, styles.cartListHeaderQuantity]}>数量</Text>
-            <Text style={[styles.cartListHeaderText, styles.cartListHeaderPrice]}>小计</Text>
+            <Text
+              style={[styles.cartListHeaderText, styles.cartListHeaderQuantity]}
+            >
+              数量
+            </Text>
+            <Text
+              style={[styles.cartListHeaderText, styles.cartListHeaderPrice]}
+            >
+              小计
+            </Text>
           </View>
         </View>
 
@@ -480,7 +400,9 @@ export default function OrderScreen() {
                 <Text style={styles.cartItemName}>{item.name}</Text>
                 {item.isCombo && item.comboItems ? (
                   <>
-                    <Text style={styles.cartItemComboSpecs}>{item.comboItems}</Text>
+                    <Text style={styles.cartItemComboSpecs}>
+                      {item.comboItems}
+                    </Text>
                     {item.tags && item.tags.length > 0 && (
                       <View style={styles.cartItemTags}>
                         {item.tags.map((tag, idx) => (
@@ -535,9 +457,14 @@ export default function OrderScreen() {
             <Text style={styles.cartSummaryItems}>共 {totalItems} 项</Text>
             <View style={styles.cartSummaryPrice}>
               <Text style={styles.cartTotalLabel}>
-                合计：<Text style={styles.cartTotalPrice}>¥ {totalPrice.toFixed(1)}</Text>
+                合计：
+                <Text style={styles.cartTotalPrice}>
+                  ¥ {totalPrice.toFixed(1)}
+                </Text>
               </Text>
-              <Text style={styles.cartDiscount}>已优惠：{discount.toFixed(2)}</Text>
+              <Text style={styles.cartDiscount}>
+                已优惠：{discount.toFixed(2)}
+              </Text>
             </View>
           </View>
           <View style={styles.cartActions}>
@@ -546,7 +473,9 @@ export default function OrderScreen() {
               <Text style={styles.cancelButtonText}>整单取消</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.checkoutButton}>
-              <Text style={styles.checkoutButtonText}>结账 ¥{totalPrice.toFixed(1)}</Text>
+              <Text style={styles.checkoutButtonText}>
+                结账 ¥{totalPrice.toFixed(1)}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -556,7 +485,7 @@ export default function OrderScreen() {
       <View style={styles.rightPanel}>
         {/* 顶部搜索栏 */}
         <View style={styles.header}>
-          <View style={styles.searchContainer}>
+          <View style={styles.headerLeft}>
             <Text style={styles.searchIcon}>🔍</Text>
             <TextInput
               style={styles.searchInput}
@@ -595,7 +524,7 @@ export default function OrderScreen() {
                 styles.categoryButton,
                 selectedCategory === index && styles.categoryButtonActive,
               ]}
-              onPress={() => setSelectedCategory(index)}
+              onPress={() => handleCategoryPress(index)}
             >
               <Text
                 style={[
@@ -609,47 +538,46 @@ export default function OrderScreen() {
           ))}
         </ScrollView>
 
-        {/* 商品网格 */}
-        <ScrollView
-          style={styles.productsContainer}
-          contentContainerStyle={styles.productsContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.productsGrid}>
-            {products.map(product => (
-              <View key={product.id} style={styles.productCard}>
-                <View style={styles.productImageContainer}>
-                  <Image
-                    source={{ uri: product.image }}
-                    style={styles.productImage}
-                    resizeMode="cover"
-                  />
-                </View>
-                <View style={styles.productInfo}>
-                  <Text style={styles.productName}>{product.name}</Text>
-                  <View style={styles.productBottom}>
-                    <Text style={styles.productPrice}>¥{product.price.toFixed(1)}</Text>
-                    <View style={styles.productQuantityControls}>
-                      <TouchableOpacity
-                        style={styles.productQuantityMinus}
-                        onPress={() => updateProductQuantity(product.id, -1)}
-                      >
-                        <Text style={styles.productQuantityMinusText}>－</Text>
-                      </TouchableOpacity>
-                      <Text style={styles.productQuantityText}>{product.quantity}</Text>
-                      <TouchableOpacity
-                        style={styles.productQuantityPlus}
-                        onPress={() => updateProductQuantity(product.id, 1)}
-                      >
-                        <Text style={styles.productQuantityPlusText}>＋</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            ))}
-          </View>
-        </ScrollView>
+        {/* 商品网格 - 使用 FlashList 实现虚拟化 */}
+        <View style={styles.productsContainer}>
+          <FlashList
+            ref={flashListRef}
+            data={products}
+            renderItem={({ item, index }) => (
+              <ProductCard
+                product={item}
+                numColumns={numColumns}
+                onQuantityChange={updateProductQuantity}
+                index={index}
+                leftPanelWidth={LEFT_PANEL_WIDTH}
+              />
+            )}
+            keyExtractor={item => item.id}
+            // @ts-expect-error - FlashList 特有的 estimatedItemSize 属性
+            estimatedItemSize={ITEM_ESTIMATED_SIZE}
+            numColumns={numColumns}
+            contentContainerStyle={styles.productsContent}
+            showsVerticalScrollIndicator={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            // 列间距（行与行之间的垂直间距）
+            ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+            // iPad 优化：减少同时渲染的内容，降低内存占用
+            windowSize={7}
+            // 每次渲染 10 个项目，平衡性能和流畅度
+            maxToRenderPerBatch={10}
+            // 滚动到可见区域的初始渲染数量
+            initialNumToRender={12}
+            // 视口外的项目不活跃，保持性能
+            removeClippedSubviews
+            // iOS 风格滚动优化：自然减速效果
+            decelerationRate="normal"
+            // 启用弹性滚动（iOS bounce 效果）
+            bounces={true}
+            // Android 过度滚动模式
+            overScrollMode="always"
+          />
+        </View>
       </View>
     </View>
   );
@@ -934,20 +862,20 @@ const styles = StyleSheet.create({
     height: 64,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 24,
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.gray200,
   },
-  searchContainer: {
-    flex: 1,
-    maxWidth: 400,
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.gray100,
     borderRadius: 24,
     paddingHorizontal: 16,
     height: 40,
+    width: 400,
   },
   searchIcon: {
     fontSize: 16,
@@ -963,7 +891,7 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: 16,
+    marginLeft: 24,
     gap: 24,
   },
   headerItem: {
@@ -1018,94 +946,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // 商品网格
+  // 商品网格容器
   productsContainer: {
     flex: 1,
+    paddingRight:12,
   },
   productsContent: {
-    padding: 24,
-  },
-  productsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  productCard: {
-    // 4列布局：(100% - 3个间隙) / 4，正方形卡片
-    width: '23.5%',
-    aspectRatio: 1,
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    overflow: 'hidden',
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  productImageContainer: {
-    flex: 1,
-    overflow: 'hidden',
-  },
-  productImage: {
-    width: '100%',
-    height: '100%',
-  },
-  productInfo: {
-    padding: 8,
-  },
-  productName: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.gray900,
-    marginBottom: 6,
-  },
-  productBottom: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  productPrice: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  productQuantityControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  productQuantityMinus: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: COLORS.gray200,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  productQuantityMinusText: {
-    fontSize: 14,
-    color: COLORS.gray400,
-  },
-  productQuantityText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.gray900,
-    minWidth: 16,
-    textAlign: 'center',
-  },
-  productQuantityPlus: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    backgroundColor: COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  productQuantityPlusText: {
-    fontSize: 14,
-    color: COLORS.black,
-    fontWeight: '700',
+    // paddingHorizontal: 24,
+    paddingTop: 12,
+    // paddingBottom: 24,
   },
 });
