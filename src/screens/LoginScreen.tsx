@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,13 @@ import {
   ImageBackground,
   Keyboard,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
+import Dialog, { DialogRef } from '../components/Dialog';
+import DishSyncService from '../services/DishSyncService';
+import { RemoteDishData } from '../models';
 
 // 颜色常量 - 与 login.html 保持一致
 const COLORS = {
@@ -54,6 +58,33 @@ const isSpecialKey = (key: string): key is 'delete' | 'confirm' => {
 export default function LoginScreen({ navigation }: LoginScreenProps) {
   const [employeeId, setEmployeeId] = useState('');
   const [pinCode, setPinCode] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const dialogRef = useRef<DialogRef>(null);
+
+  // 模拟从服务器获取最新菜品数据
+  const fetchRemoteDishes = async (): Promise<RemoteDishData[]> => {
+    // 模拟网络延迟
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    // 从本地 JSON 模拟远程数据（实际应该从 API 获取）
+    const dishesJson = require('../data/dishes.json');
+
+    return dishesJson.map((item: any, index: number) => ({
+      id: item.id,
+      categoryId: item.categoryId,
+      categoryName: item.categoryName,
+      name: item.name,
+      price: item.price,
+      image: item.image,
+      sales: item.sales || 0,
+      isHot: item.isHot || false,
+      description: item.description || '',
+      isAvailable: true,
+      isSoldOut: false,
+      sortOrder: index,
+      imageVersion: Date.now(),
+    }));
+  };
 
   // 处理数字按钮点击
   const handleNumberPress = useCallback((num: string) => {
@@ -67,13 +98,76 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     setPinCode(prev => prev.slice(0, -1));
   }, []);
 
-  // 处理确认按钮
-  const handleConfirmPress = useCallback(() => {
-    // 登录逻辑
-    console.log('登录:', { employeeId, pinCode });
-    // TODO: 实现登录验证
-    // 跳转到首页（门店看板）
-    navigation.replace('Home');
+  // 处理确认按钮 - 登录并同步数据
+  const handleConfirmPress = useCallback(async () => {
+    // 验证输入
+    if (!employeeId || pinCode.length !== 4) {
+      dialogRef.current?.show({
+        type: 'warning',
+        title: '输入不完整',
+        message: '请输入员工ID/桌号和完整的4位PIN码',
+        confirmText: '确定',
+      });
+      return;
+    }
+
+    setIsSyncing(true);
+
+    try {
+      // 显示同步开始对话框
+      dialogRef.current?.show({
+        type: 'update',
+        title: '正在同步数据',
+        message: '正在从服务器下载最新菜品数据，请稍候...',
+        confirmText: '后台同步',
+        cancelText: '跳过',
+        onConfirm: () => {
+          // 用户选择后台同步，直接跳转
+          navigation.replace('Home');
+        },
+        onCancel: () => {
+          // 用户选择跳过同步，直接跳转
+          navigation.replace('Home');
+        },
+      });
+
+      // 获取远程数据
+      const remoteDishes = await fetchRemoteDishes();
+
+      // 同步到数据库
+      const stats = await DishSyncService.sync(remoteDishes, {
+        removeNotFound: true,
+        onProgress: (current, total) => {
+          const percent = Math.round((current / total) * 100);
+          // 可以在这里更新进度提示（暂时简化处理）
+          console.log(`同步进度: ${percent}%`);
+        },
+      });
+
+      // 同步完成，显示成功提示
+      dialogRef.current?.show({
+        type: 'success',
+        title: '数据同步完成',
+        message: `已同步 ${stats.total} 道菜品\n新增 ${stats.created} 道，更新 ${stats.updated} 道`,
+        confirmText: '开始使用',
+        onConfirm: () => {
+          navigation.replace('Home');
+        },
+      });
+    } catch (error) {
+      console.error('同步失败:', error);
+      dialogRef.current?.show({
+        type: 'warning',
+        title: '同步失败',
+        message: '数据同步失败，将使用本地缓存数据',
+        confirmText: '继续登录',
+        onConfirm: () => {
+          navigation.replace('Home');
+        },
+      });
+    } finally {
+      setIsSyncing(false);
+    }
   }, [employeeId, pinCode, navigation]);
 
   // 处理输入框 Focus - 隐藏键盘以显示数字键盘
@@ -150,12 +244,22 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
 
               {/* 登录按钮 */}
               <TouchableOpacity
-                style={styles.loginButton}
+                style={[styles.loginButton, isSyncing && styles.loginButtonDisabled]}
                 onPress={handleConfirmPress}
                 activeOpacity={0.8}
+                disabled={isSyncing}
               >
-                <Text style={styles.loginButtonText}>登录</Text>
-                <Text style={styles.loginButtonIcon}>→</Text>
+                {isSyncing ? (
+                  <>
+                    <ActivityIndicator size="small" color={COLORS.white} />
+                    <Text style={styles.loginButtonText}>同步中...</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.loginButtonText}>登录</Text>
+                    <Text style={styles.loginButtonIcon}>→</Text>
+                  </>
+                )}
               </TouchableOpacity>
 
               {/* 忘记访问码链接 */}
@@ -184,8 +288,10 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
                           styles.keyButton,
                           isDelete && styles.deleteButton,
                           isConfirm && styles.confirmButton,
+                          isSyncing && styles.keyButtonDisabled,
                         ]}
                         onPress={() => {
+                          if (isSyncing) return;
                           if (isDelete) {
                             handleDeletePress();
                           } else if (isConfirm) {
@@ -195,6 +301,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
                           }
                         }}
                         activeOpacity={0.7}
+                        disabled={isSyncing}
                       >
                         {isDelete && <Text style={styles.deleteIcon}>⌫</Text>}
                         {isConfirm && <Text style={styles.confirmIcon}>✓</Text>}
@@ -223,6 +330,9 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
           </Text>
         </View>
       </View>
+
+      {/* Dialog 组件 */}
+      <Dialog ref={dialogRef} />
     </View>
   );
 }
@@ -359,6 +469,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
+  loginButtonDisabled: {
+    backgroundColor: COLORS.textSecondary,
+    shadowOpacity: 0.1,
+  },
   loginButtonText: {
     fontSize: 17,
     fontWeight: '700',
@@ -410,13 +524,13 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
+  keyButtonDisabled: {
+    opacity: 0.5,
+  },
   numberText: {
     fontSize: 28,
     fontWeight: '700',
     color: COLORS.textPrimary,
-  },
-  specialIcon: {
-    fontSize: 24,
   },
   deleteButton: {
     backgroundColor: '#f3e3e2',
