@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>门店看板数据-亮色版</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#EAB308", // Golden Yellow
+                        "primary-dark": "#A16207",
+                        "primary-light": "#FEFCE8",
+                        "sidebar-light": "#F9FAFB",
+                        "content-bg": "#F3F4F6",
+                    },
+                    fontFamily: {
+                        display: ["Inter", "system-ui", "sans-serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "12px",
+                    },
+                },
+            },
+        };
+    </script>
+<style type="text/tailwindcss">
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .chart-gradient {
+            background: linear-gradient(180deg, rgba(234, 179, 8, 0.1) 0%, rgba(234, 179, 8, 0) 100%);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #D1D5DB;
+            border-radius: 10px;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-content-bg text-slate-900 min-h-screen flex overflow-hidden">
+<aside class="w-20 bg-sidebar-light flex flex-col items-center py-6 border-r border-gray-200 shrink-0">
+<div class="mb-10">
+<div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-white text-2xl">restaurant</span>
+</div>
+<p class="text-[10px] text-primary-dark font-bold mt-1 text-center tracking-tighter">CATERING</p>
+</div>
+<nav class="flex flex-col gap-6 w-full">
+<a class="flex flex-col items-center gap-1 py-3 bg-primary-light border-r-4 border-primary text-primary-dark" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-[10px] font-medium">首页</span>
+</a>
+<a class="flex flex-col items-center gap-1 py-3 text-gray-500 hover:text-gray-800 transition-colors" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="text-[10px] font-medium">点单</span>
+</a>
+<a class="flex flex-col items-center gap-1 py-3 text-gray-500 hover:text-gray-800 transition-colors" href="#">
+<span class="material-symbols-outlined">table_restaurant</span>
+<span class="text-[10px] font-medium">桌台</span>
+</a>
+<a class="flex flex-col items-center gap-1 py-3 text-gray-500 hover:text-gray-800 transition-colors" href="#">
+<span class="material-symbols-outlined">list_alt</span>
+<span class="text-[10px] font-medium">订单</span>
+</a>
+<a class="flex flex-col items-center gap-1 py-3 text-gray-500 hover:text-gray-800 transition-colors" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="text-[10px] font-medium">会员</span>
+</a>
+</nav>
+</aside>
+<main class="flex-1 flex flex-col h-screen overflow-hidden">
+<header class="h-16 flex items-center justify-between px-6 bg-white border-b border-gray-200 shrink-0">
+<div class="flex items-center gap-4">
+<span class="text-gray-500 text-sm font-medium">版本V1.0.3</span>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2 cursor-pointer text-gray-600 hover:text-gray-900">
+<img alt="UK Flag" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAeCO1gnA_M3w9wsedUArOqC0wAhg-u72UZJyLQIQBbmrPzVfJEPNSF8pb6_xlBrXXSXFqyUKCXDoH1sZ7gcpsFpEj6llGJ3SWNvPzxgNPrIldrpTeJAcZAPfhQIz_MX18MPdmIQdWM4dZC4P4JliKDxylq4C-dgxjUfAUiT6DQzoI73wFk0CEseFnMP_K_nUN83MOZSq54mWlpwQThtXb4tA8zy0bX0QlrsPDdFFj1ilz8aHfiAJ6BZpZEVAlUZwpp6K7V4SFN8x0" srcset="https://flagcdn.com/w40/gb.png 2x" width="20"/>
+<span class="text-sm">English</span>
+<span class="material-symbols-outlined text-sm">expand_more</span>
+</div>
+<div class="flex items-center gap-2 cursor-pointer bg-gray-50 pl-1 pr-3 py-1 rounded-full border border-gray-200">
+<div class="w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
+<img alt="Avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQq7EsNr-EpJeDsNhXKORx8lByZBn_A4Bxa65HPm5FLNFqibwW2jLpw6Ao9uxbez9Mt9d7Ay8XE2i038BUy_mMBnaGcQQNwDP9p-u2ZkiBBmhFAlFfvF3alqeIDer1YTbMQUmIyMtUEnue1OQnzYspKaIZQZW_aFTukLlMYp-H2E2sUaISm1iZVcJ_CtE0HowLB_LnJVpT95cqnvzdKwufvzIxIPiL-3-qtjxncWcrnEfdvESRUxzA7P5ZpwNaYYmSURhUzxNP2PMw"/>
+</div>
+<span class="text-sm font-medium text-gray-700">admin</span>
+</div>
+</div>
+</header>
+<div class="p-6 flex-1 overflow-y-auto custom-scrollbar">
+<div class="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100">
+<div class="flex justify-between items-center mb-6">
+<h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+<span class="w-1.5 h-5 bg-primary rounded-full"></span>
+                        门店看板 <span class="text-sm font-normal text-gray-400 ml-1">(实时更新)</span>
+</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+<div class="bg-blue-50 p-5 rounded-2xl flex justify-between items-start border border-blue-100 shadow-sm">
+<div>
+<p class="text-sm text-blue-600 font-medium mb-1">营业额</p>
+<p class="text-2xl font-bold text-gray-900">5,276.00</p>
+</div>
+<svg class="w-16 h-10 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 100 40">
+<path d="M0 35 Q 20 10, 40 30 T 80 15 L 100 25" fill="none" stroke-linecap="round"></path>
+</svg>
+</div>
+<div class="bg-emerald-50 p-5 rounded-2xl flex justify-between items-start border border-emerald-100 shadow-sm">
+<div>
+<p class="text-sm text-emerald-600 font-medium mb-1">会员总量</p>
+<p class="text-2xl font-bold text-gray-900">5,276</p>
+</div>
+<svg class="w-16 h-10 text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 100 40">
+<path d="M0 30 L 20 20 L 40 35 L 60 15 L 80 25 L 100 10" fill="none" stroke-linecap="round"></path>
+</svg>
+</div>
+<div class="bg-amber-50 p-5 rounded-2xl flex justify-between items-start border border-amber-100 shadow-sm">
+<div>
+<p class="text-sm text-amber-600 font-medium mb-1">订单总量</p>
+<p class="text-2xl font-bold text-gray-900">5,276</p>
+</div>
+<svg class="w-16 h-10 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 100 40">
+<path d="M0 35 L 25 15 L 50 30 L 75 10 L 100 25" fill="none" stroke-linecap="round"></path>
+</svg>
+</div>
+<div class="bg-purple-50 p-5 rounded-2xl flex justify-between items-start border border-purple-100 shadow-sm">
+<div>
+<p class="text-sm text-purple-600 font-medium mb-1">商品总量</p>
+<p class="text-2xl font-bold text-gray-900">5,276</p>
+</div>
+<svg class="w-16 h-10 text-purple-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 100 40">
+<path d="M0 25 Q 25 5, 50 25 T 100 15" fill="none" stroke-linecap="round"></path>
+</svg>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+<div class="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+<div class="flex items-center gap-2 mb-6">
+<span class="w-1 h-4 bg-primary rounded-full"></span>
+<h3 class="font-bold text-gray-900">日营业统计</h3>
+</div>
+<div class="flex gap-12 mb-8">
+<div>
+<p class="text-xs text-gray-400 mb-1">今日营收</p>
+<p class="text-2xl font-bold text-gray-900">5,276 <span class="text-xs font-normal text-gray-400">元</span></p>
+</div>
+<div>
+<p class="text-xs text-gray-400 mb-1">今日客流量</p>
+<p class="text-2xl font-bold text-gray-900">1,434 <span class="text-xs font-normal text-gray-400">人</span></p>
+</div>
+</div>
+<div class="relative h-64 w-full">
+<div class="absolute left-0 top-0 h-full flex flex-col justify-between text-[10px] text-gray-400 pointer-events-none">
+<span>10,000</span><span>8,000</span><span>6,000</span><span>4,000</span><span>2,000</span><span>0</span>
+</div>
+<div class="ml-10 h-full flex flex-col justify-between pt-1 pb-4">
+<div class="border-t border-dashed border-gray-100 w-full"></div>
+<div class="border-t border-dashed border-gray-100 w-full"></div>
+<div class="border-t border-dashed border-gray-100 w-full"></div>
+<div class="border-t border-dashed border-gray-100 w-full"></div>
+<div class="border-t border-dashed border-gray-100 w-full"></div>
+</div>
+<div class="absolute left-10 right-0 bottom-4 top-1">
+<svg class="w-full h-full" preserveAspectRatio="none" viewBox="0 0 400 200">
+<path class="fill-primary/10" d="M0 200 L 100 160 L 200 120 L 300 80 L 400 40 V 200 Z"></path>
+<path class="stroke-primary" d="M0 200 L 100 160 L 200 120 L 300 80 L 400 40" fill="none" stroke-width="2"></path>
+<circle class="fill-white stroke-primary" cx="200" cy="120" r="4" stroke-width="2"></circle>
+</svg>
+<div class="absolute top-10 left-[120px] bg-white shadow-lg border border-gray-100 rounded-lg p-3 z-10">
+<p class="text-[10px] text-gray-400 mb-1">今日 14:00</p>
+<p class="text-xs font-bold text-gray-900">收入: ¥1960</p>
+<p class="text-xs font-bold text-gray-900">客流量: 40</p>
+</div>
+</div>
+<div class="absolute left-10 right-0 bottom-0 flex justify-between text-[10px] text-gray-400">
+<span>4:00</span><span>8:00</span><span>12:00</span><span>16:00</span><span>20:00</span><span>24:00</span>
+</div>
+</div>
+<div class="flex justify-center gap-4 mt-4">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-[10px] text-gray-400 font-medium">营收/客流量</span>
+</div>
+</div>
+</div>
+<div class="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+<div class="flex items-center gap-2 mb-6">
+<span class="w-1 h-4 bg-primary rounded-full"></span>
+<h3 class="font-bold text-gray-900">近7日趋势</h3>
+</div>
+<div class="flex gap-8 mb-8 overflow-x-auto pb-2 scrollbar-hide">
+<div class="shrink-0">
+<p class="text-xs text-gray-400 mb-1">成交额</p>
+<p class="text-2xl font-bold text-gray-900">5,276 <span class="text-xs font-normal text-gray-400">元</span></p>
+</div>
+<div class="shrink-0">
+<p class="text-xs text-gray-400 mb-1">订单量</p>
+<p class="text-2xl font-bold text-gray-900">5,276 <span class="text-xs font-normal text-gray-400">份</span></p>
+</div>
+<div class="shrink-0">
+<p class="text-xs text-gray-400 mb-1">客流量</p>
+<p class="text-2xl font-bold text-gray-900">5,276 <span class="text-xs font-normal text-gray-400">人</span></p>
+</div>
+</div>
+<div class="relative h-64 w-full">
+<div class="absolute left-0 top-0 h-full flex flex-col justify-between text-[10px] text-gray-400 pointer-events-none">
+<span>10,000</span><span>8,000</span><span>6,000</span><span>4,000</span><span>2,000</span><span>0</span>
+</div>
+<div class="ml-10 h-full flex flex-col justify-between pt-1 pb-4">
+<div class="border-t border-dashed border-gray-100 w-full"></div>
+<div class="border-t border-dashed border-gray-100 w-full"></div>
+<div class="border-t border-dashed border-gray-100 w-full"></div>
+<div class="border-t border-dashed border-gray-100 w-full"></div>
+<div class="border-t border-dashed border-gray-100 w-full"></div>
+</div>
+<div class="absolute left-10 right-0 bottom-4 top-1">
+<svg class="w-full h-full" preserveAspectRatio="none" viewBox="0 0 400 200">
+<path class="stroke-blue-500" d="M0 150 Q 50 120, 100 130 T 200 80 T 300 110 T 400 40" fill="none" stroke-width="2"></path>
+<path class="stroke-emerald-500" d="M0 160 Q 50 140, 100 160 T 200 150 T 300 90 T 400 130" fill="none" stroke-width="2"></path>
+<path class="stroke-primary" d="M0 180 Q 50 170, 100 180 T 200 175 T 300 170 T 400 175" fill="none" stroke-width="2"></path>
+</svg>
+</div>
+<div class="absolute left-10 right-0 bottom-0 flex justify-between text-[10px] text-gray-400">
+<span>7月1日</span><span>7月2日</span><span>7月3日</span><span>7月4日</span><span>7月5日</span><span>7月6日</span><span>7月7日</span>
+</div>
+</div>
+<div class="flex justify-center gap-4 mt-4">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-blue-500"></span>
+<span class="text-[10px] text-gray-400 font-medium">成交额</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+<span class="text-[10px] text-gray-400 font-medium">订单量</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-[10px] text-gray-400 font-medium">客流量</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+
+</body></html>

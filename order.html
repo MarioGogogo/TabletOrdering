@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport" />
+    <title>POS点菜系统主界面</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet" />
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#FFC107",
+                        "background-light": "#F3F4F6",
+                        "background-dark": "#0A0A0A",
+                        "card-dark": "#1A1A1A",
+                        "sidebar-dark": "#111111",
+                    },
+                    fontFamily: {
+                        display: ["Inter", "system-ui", "sans-serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "12px",
+                    },
+                },
+            },
+        };
+    </script>
+    <style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+    <style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+
+<body
+    class="bg-background-light dark:bg-background-dark font-display text-gray-900 dark:text-gray-100 antialiased overflow-hidden">
+    <div class="flex h-screen w-full">
+
+        <main class="flex-1 flex flex-col md:flex-row min-w-0 bg-gray-50 dark:bg-background-dark">
+            <section
+                class="w-full md:w-[320px] lg:w-[380px] flex flex-col bg-white dark:bg-card-dark border-r border-gray-200 dark:border-gray-800">
+                <div class="p-4 border-b border-gray-100 dark:border-gray-800">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-lg font-bold">流水号：001号</h2>
+                        <div class="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+                            <button
+                                class="px-3 py-1 text-xs font-medium rounded-md bg-white dark:bg-gray-700 shadow-sm">堂食</button>
+                            <button class="px-3 py-1 text-xs font-medium text-gray-500">自取</button>
+                            <button class="px-3 py-1 text-xs font-medium text-gray-500">外卖</button>
+                        </div>
+                    </div>
+                    <div class="flex text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        <span class="flex-1">商品名称</span>
+                        <span class="w-20 text-center">数量</span>
+                        <span class="w-16 text-right">小计</span>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 space-y-6 no-scrollbar">
+                    <div class="space-y-4">
+                        <div class="flex items-start">
+                            <div class="flex-1">
+                                <div class="text-sm font-semibold">摩卡咖啡</div>
+                                <div class="text-[10px] text-gray-400 mt-1">常温、不加奶、不加糖</div>
+                            </div>
+                            <div class="flex items-center space-x-2 w-20 justify-center">
+                                <button
+                                    class="w-5 h-5 flex items-center justify-center border border-gray-300 dark:border-gray-600 rounded text-gray-500">－</button>
+                                <span class="text-sm">1</span>
+                                <button
+                                    class="w-5 h-5 flex items-center justify-center bg-primary rounded text-black font-bold">＋</button>
+                            </div>
+                            <div class="w-16 text-right text-sm font-bold">¥48.00</div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="flex-1">
+                                <div class="text-sm font-semibold">巧克力物语</div>
+                                <div class="text-[10px] text-gray-400 mt-1">默认配置</div>
+                            </div>
+                            <div class="flex items-center space-x-2 w-20 justify-center">
+                                <button
+                                    class="w-5 h-5 flex items-center justify-center border border-gray-300 dark:border-gray-600 rounded text-gray-500">－</button>
+                                <span class="text-sm">1</span>
+                                <button
+                                    class="w-5 h-5 flex items-center justify-center bg-primary rounded text-black font-bold">＋</button>
+                            </div>
+                            <div class="w-16 text-right text-sm font-bold">¥48.00</div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="flex-1">
+                                <div class="text-sm font-semibold">摩卡咖啡</div>
+                                <div class="text-[10px] text-gray-400 mt-1">冰、少糖</div>
+                            </div>
+                            <div class="flex items-center space-x-2 w-20 justify-center">
+                                <button
+                                    class="w-5 h-5 flex items-center justify-center border border-gray-300 dark:border-gray-600 rounded text-gray-500">－</button>
+                                <span class="text-sm">1</span>
+                                <button
+                                    class="w-5 h-5 flex items-center justify-center bg-primary rounded text-black font-bold">＋</button>
+                            </div>
+                            <div class="w-16 text-right text-sm font-bold">¥48.00</div>
+                        </div>
+                        <div class="flex items-start">
+                            <div class="flex-1">
+                                <div class="text-sm font-semibold">摩卡咖啡</div>
+                                <div class="text-[10px] text-blue-500 dark:text-blue-400 mt-1">摩卡咖啡【常规】、巧克力物语蛋糕【小份】
+                                </div>
+                                <div class="mt-1 flex gap-1">
+                                    <span
+                                        class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-[10px] rounded">少冰</span>
+                                    <span
+                                        class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-[10px] rounded">不加糖</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-2 w-20 justify-center">
+                                <button
+                                    class="w-5 h-5 flex items-center justify-center border border-gray-300 dark:border-gray-600 rounded text-gray-500">－</button>
+                                <span class="text-sm">1</span>
+                                <button
+                                    class="w-5 h-5 flex items-center justify-center bg-primary rounded text-black font-bold">＋</button>
+                            </div>
+                            <div class="w-16 text-right text-sm font-bold">¥48.00</div>
+                        </div>
+                    </div>
+                    <div class="pt-4 border-t border-gray-100 dark:border-gray-800">
+                        <textarea
+                            class="w-full bg-gray-50 dark:bg-gray-800 border-none rounded-lg text-xs p-3 focus:ring-1 focus:ring-primary h-20 resize-none"
+                            placeholder="备注信息..."></textarea>
+                    </div>
+                </div>
+                <div class="p-4 bg-gray-50 dark:bg-[#151515] border-t border-gray-200 dark:border-gray-800">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-xs text-gray-500">共 4 项</span>
+                        <div class="text-right">
+                            <div class="text-lg font-bold">合计：<span class="text-primary">¥ 28.8</span></div>
+                            <div class="text-[10px] text-red-500 font-medium">已优惠：2.00</div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button
+                            class="col-span-1 py-3 rounded-lg bg-gray-700 text-white text-sm font-bold flex items-center justify-center">
+                            <span class="material-icons-outlined text-sm mr-1">delete_outline</span>
+                            整单取消
+                        </button>
+                        <button
+                            class="col-span-2 py-3 rounded-lg bg-primary text-black text-sm font-bold shadow-lg shadow-primary/20">
+                            结账 ¥28.8
+                        </button>
+                    </div>
+                </div>
+            </section>
+            <section class="flex-1 flex flex-col min-w-0">
+                <header
+                    class="h-16 flex items-center px-6 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-card-dark">
+                    <div class="flex-1 relative max-w-md">
+                        <span
+                            class="material-icons-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">search</span>
+                        <input
+                            class="w-full bg-gray-100 dark:bg-gray-800 border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-1 focus:ring-primary"
+                            placeholder="通过名称/拼音/条码搜索" type="text" />
+                    </div>
+                    <div class="flex items-center space-x-6 ml-4">
+                        <div class="flex items-center space-x-2 text-xs font-medium text-gray-500">
+                            <img alt="English"
+                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCVIerwa63LaOlanESzl5V2w6j3vzDt_6oDJAeYfBmVHBTF5MAybJlpJHjzU3xLCB3jWYfaYLjKfrplFM6CnvIi4URaGuLh6ffidD4iQNm1ILdS9J_NtnmcewCBVp-6-jZrMPFgYvZjjW-rVhaDdEzqdOrGq4ooqviIj2P-lAKoZ30q08KYGfH6VJBAycs9RNTFI5XEjdfR-GiOqVMbHtoBE7q0iQYiPLdhTxg2REJl9eI8SseugzFTZzNmgsjLMOZcCFW5-6uuKmK0"
+                                srcset="https://flagcdn.com/w40/gb.png 2x" width="20" />
+                            <span>English</span>
+                        </div>
+                        <div class="flex items-center space-x-2 text-xs font-medium text-gray-500">
+                            <span class="material-icons-outlined text-sm">person</span>
+                            <span>admin</span>
+                        </div>
+                    </div>
+                </header>
+                <div
+                    class="px-6 py-4 flex flex-wrap gap-2 overflow-x-auto no-scrollbar bg-white dark:bg-card-dark border-b border-gray-200 dark:border-gray-800">
+                    <button
+                        class="px-4 py-2 bg-primary text-black font-bold text-xs rounded-lg whitespace-nowrap">全部分类</button>
+                    <button
+                        class="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs rounded-lg whitespace-nowrap">意式咖啡</button>
+                    <button
+                        class="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs rounded-lg whitespace-nowrap">精酿啤酒</button>
+                    <button
+                        class="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs rounded-lg whitespace-nowrap">原麦烘焙</button>
+                    <button
+                        class="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs rounded-lg whitespace-nowrap">意式早餐</button>
+                    <button
+                        class="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs rounded-lg whitespace-nowrap">美团套餐</button>
+                    <button
+                        class="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs rounded-lg whitespace-nowrap">精酿啤酒</button>
+                    <button
+                        class="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs rounded-lg whitespace-nowrap">美团套餐</button>
+                    <button
+                        class="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs rounded-lg whitespace-nowrap">原麦烘焙</button>
+                </div>
+                <div class="flex-1 overflow-y-auto p-6 no-scrollbar">
+                    <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        <div class="bg-white dark:bg-card-dark rounded-xl overflow-hidden shadow-sm group">
+                            <div class="h-40 overflow-hidden">
+                                <img alt="摩卡咖啡"
+                                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGhufoySu1LSMMqEf1TVK4tcpsx9q0LNXTC0ViFJ4VdQ2bQBSHi4Lz7LrBPD1_aZSTlW-WjBpPtzW4mKeTJ1QbBnN5shCN8-wT_kzxXdwMrEywQZ3sGGDzgnzzh7VyuFLfZcHBHm90c2Tvr9Moi2UI_nGodYJx3IjI6yEZg5Iqs-qM2uDtyX0Ywa1PmRFLwejkzReXCU1QidI2ijs8ebZC7p60KFgkqzi8EnjpHae-J4_WmHTtauGLl6mNPpG0eJm31qXzZrlBeZGo" />
+                            </div>
+                            <div class="p-3">
+                                <h3 class="text-sm font-bold mb-3">摩卡咖啡</h3>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm font-bold text-primary">¥28.9</span>
+                                    <div class="flex items-center space-x-2">
+                                        <button
+                                            class="w-6 h-6 flex items-center justify-center border border-gray-200 dark:border-gray-700 rounded-md text-gray-400">－</button>
+                                        <span class="text-xs font-bold">1</span>
+                                        <button
+                                            class="w-6 h-6 flex items-center justify-center bg-primary rounded-md text-black font-bold">＋</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-card-dark rounded-xl overflow-hidden shadow-sm group">
+                            <div class="h-40 overflow-hidden">
+                                <img alt="蓝莓蛋糕"
+                                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuBUodXWICxiWGsqmyuEAoNOZ_99aEZaPgRLSV-M0hyNSm7ytV1obvw3ClROPbQYAGQUN_CRpRQ5zlZV06G-C5W0xaHQwDUxq_nvFm2w0tvMhkAL23Xj4aNCLAOVVDQBOhJ5ZzZ5s8RFe73Q5bqrqLa8cwabIDCuw31EJVv-yRUW1l9TdBp-lOCeJ9_sH-JLqgwtFpmFtvygl-sYp_SSJoZ0nV8MDxiZBYZUohB_mLoy_-w9MKdaOpSHVZWxJfZpjAGwvovTPATvM2Md" />
+                            </div>
+                            <div class="p-3">
+                                <h3 class="text-sm font-bold mb-3">蓝莓蛋糕</h3>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm font-bold text-primary">¥28.9</span>
+                                    <div class="flex items-center space-x-2">
+                                        <button
+                                            class="w-6 h-6 flex items-center justify-center border border-gray-200 dark:border-gray-700 rounded-md text-gray-400">－</button>
+                                        <span class="text-xs font-bold">1</span>
+                                        <button
+                                            class="w-6 h-6 flex items-center justify-center bg-primary rounded-md text-black font-bold">＋</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-card-dark rounded-xl overflow-hidden shadow-sm group">
+                            <div class="h-40 overflow-hidden">
+                                <img alt="摩卡咖啡"
+                                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2ezoTbqiqse-TzztWOXAv6BhbP7y2Q59aOw1I-kinfTDvSbwOTxXACvC68Xcrs6-pgz-2gFkVTqxusP6UGYzkVB8Vz4RvIFkBTDTebrYYvsjlKpU2DyG4tLdBZgB2aFQuz2aIV7uazXXSH_evA5JyxRAIqZEmmD3iReoLMHWom4DgtJFTcjaL-wdbbuLkgK0XDZqifxIvDTbXq_L5YckqsBvT9BaSdguXIlvamvos38VIdCz4pcXyhA_DJpuMrewyn8yjxQtcGASk" />
+                            </div>
+                            <div class="p-3">
+                                <h3 class="text-sm font-bold mb-3">摩卡咖啡</h3>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm font-bold text-primary">¥28.9</span>
+                                    <div class="flex items-center space-x-2">
+                                        <button
+                                            class="w-6 h-6 flex items-center justify-center border border-gray-200 dark:border-gray-700 rounded-md text-gray-400">－</button>
+                                        <span class="text-xs font-bold">1</span>
+                                        <button
+                                            class="w-6 h-6 flex items-center justify-center bg-primary rounded-md text-black font-bold">＋</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-card-dark rounded-xl overflow-hidden shadow-sm group">
+                            <div class="h-40 overflow-hidden">
+                                <img alt="摩卡咖啡"
+                                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-syXNPdhNuYu2RqbH571dR8yIyeVKjg6G3mUlVGhpToPlAKpZnhIuOdEavPkQy_pXqLNpfpWkWtdQIk5Gfa9Yb0NQamdKmQ5RooKZlllIL9k-2fDzz3B3OigeC01jELuUys70Gq92JVT3w7DlHqmu18zDLiy4hufrHPPn-xGV5eBQRzNfABTF-SQ49ja0jnCzXirHFtP5ilZxwzKqSwqnwFzEbf4FkTLpKum5-uik0juYfENyyZ2SXSlmehNW4XKPDXkGOdv6va8r" />
+                            </div>
+                            <div class="p-3">
+                                <h3 class="text-sm font-bold mb-3">摩卡咖啡</h3>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm font-bold text-primary">¥28.9</span>
+                                    <div class="flex items-center space-x-2">
+                                        <button
+                                            class="w-6 h-6 flex items-center justify-center border border-gray-200 dark:border-gray-700 rounded-md text-gray-400">－</button>
+                                        <span class="text-xs font-bold">1</span>
+                                        <button
+                                            class="w-6 h-6 flex items-center justify-center bg-primary rounded-md text-black font-bold">＋</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-card-dark rounded-xl overflow-hidden shadow-sm group">
+                            <div class="h-40 overflow-hidden">
+                                <img alt="鲜果塔"
+                                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuDtebsgnf125URHevqiO-eNc4R5mWCjCWpyI7WQHbr9MpvwXEPd97ge05yuRIF6CANUCb29fkSXjyOa1dX-rmH1P388r45_MowB0tHITd7AfzUbYbu-QZSh925Xpw_69V2eBr4E0cj929pvMXnwAEI0kos6X6wmaeZvwpe6kTJAj_q-BkQrFjswPfLab_2BcYv_fjgfdb3Iz_J72J2aIYPPBvXMaOZys8eN1-UsWyjnrEA38VAA5loslqqfGuP_UZmdz8GgonotPgFB" />
+                            </div>
+                            <div class="p-3">
+                                <h3 class="text-sm font-bold mb-3">鲜果塔</h3>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm font-bold text-primary">¥28.9</span>
+                                    <div class="flex items-center space-x-2">
+                                        <button
+                                            class="w-6 h-6 flex items-center justify-center border border-gray-200 dark:border-gray-700 rounded-md text-gray-400">－</button>
+                                        <span class="text-xs font-bold">1</span>
+                                        <button
+                                            class="w-6 h-6 flex items-center justify-center bg-primary rounded-md text-black font-bold">＋</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-card-dark rounded-xl overflow-hidden shadow-sm group">
+                            <div class="h-40 overflow-hidden">
+                                <img alt="甜玫甜心蛋糕"
+                                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbXirsWXP1ggbztg9CeWcmPTCy4Khi98q236F1GwSLNDt0cfQfwpm7JWh4SyJOlLlJME5Om6kjHiYBMMyt7WZg-ji8xR4_-j91GJHxiL7d8_Rk250vqiOTMa3DEDOOfbw7534NMQ1yrBpCo05WUdzZESb-RVKCILwxxmuI2Kfvh4n1CP-UQ9penMGo0jz8WF9amqW9SFzyQBBQSsMFO5PSOVGdKvLigr6an8gD5e8eTUeHtKvRGzjrozuIjSqxAErb6gTgZanyp9a1" />
+                            </div>
+                            <div class="p-3">
+                                <h3 class="text-sm font-bold mb-3">甜玫甜心蛋糕</h3>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm font-bold text-primary">¥28.9</span>
+                                    <div class="flex items-center space-x-2">
+                                        <button
+                                            class="w-6 h-6 flex items-center justify-center border border-gray-200 dark:border-gray-700 rounded-md text-gray-400">－</button>
+                                        <span class="text-xs font-bold">1</span>
+                                        <button
+                                            class="w-6 h-6 flex items-center justify-center bg-primary rounded-md text-black font-bold">＋</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-card-dark rounded-xl overflow-hidden shadow-sm group">
+                            <div class="h-40 overflow-hidden">
+                                <img alt="摩卡咖啡"
+                                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuDgcIa9KU4S3n1eeZD5aQ0QX09x-2ZxaeHy1lPXsW8NahyuZP3bPt29omCccaLsT_h21fmVVjtqCqs_zw3GYqX8Tl-YOzrhv-lu0gEALUXyx3Y3TRExJAHo5A9q7ebbmnZ6owT5GwO4xI-DPB-wvnh3i3WQlYRmecgRFle3BHucCUZuNwpJUgJujr6VCbFPi_N53SH7KBjh14-HgNx68EKQJ0K77qrmKvjsB3pWFEPoBXht74LojyEXd0_AIG2Q4xjuXe-929D8BpzJ" />
+                            </div>
+                            <div class="p-3">
+                                <h3 class="text-sm font-bold mb-3">摩卡咖啡</h3>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm font-bold text-primary">¥28.9</span>
+                                    <div class="flex items-center space-x-2">
+                                        <button
+                                            class="w-6 h-6 flex items-center justify-center border border-gray-200 dark:border-gray-700 rounded-md text-gray-400">－</button>
+                                        <span class="text-xs font-bold">1</span>
+                                        <button
+                                            class="w-6 h-6 flex items-center justify-center bg-primary rounded-md text-black font-bold">＋</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white dark:bg-card-dark rounded-xl overflow-hidden shadow-sm group">
+                            <div class="h-40 overflow-hidden">
+                                <img alt="麦祺蛋糕"
+                                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuDzALhkICAinsfU_d3RGfd_xuiqRfBafQFiArGaOSPoXbss2B5JH2uInopl_Jy9q96IJDrvpaohW44aiJ4VZl0f_hjKntEkk3lEQ5QaLPM6qEkC0DY-Mj0cE7_L9FOLKrOGph0llM8-6OwB1EUzMRXJzm1MGArrunoMdf4XrpA6CYqKlKF3hgeOBID_r0AFTZ2T8OLwi8ugxF5aFsRLyDw4UVcxvt0V5omEj0YVhMYEFO40QOXilm5dq8EN2IwK0ZcNfJNa_YDcHf-_" />
+                            </div>
+                            <div class="p-3">
+                                <h3 class="text-sm font-bold mb-3">麦祺蛋糕</h3>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm font-bold text-primary">¥28.9</span>
+                                    <div class="flex items-center space-x-2">
+                                        <button
+                                            class="w-6 h-6 flex items-center justify-center border border-gray-200 dark:border-gray-700 rounded-md text-gray-400">－</button>
+                                        <span class="text-xs font-bold">1</span>
+                                        <button
+                                            class="w-6 h-6 flex items-center justify-center bg-primary rounded-md text-black font-bold">＋</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+</body>
+
+</html>
