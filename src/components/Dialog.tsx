@@ -6,12 +6,10 @@ import {
   TouchableOpacity,
   Modal,
   Animated,
-  Dimensions,
   Easing,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-
-const { width, height } = Dimensions.get('window');
+import { DeviceHelper } from '../utils/deviceHelper';
 
 export type DialogType = 'success' | 'warning' | 'update';
 
@@ -33,9 +31,14 @@ export interface DialogRef {
 const Dialog = forwardRef<DialogRef, {}>((props, ref) => {
   const [visible, setVisible] = useState(false);
   const [config, setConfig] = useState<DialogParams>({ type: 'success', title: '', message: '' });
-  
+
   const animValue = useRef(new Animated.Value(0)).current; // 0 = hidden, 1 = visible
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
+
+  // 根据设备类型动态计算弹窗尺寸
+  const dialogWidth = DeviceHelper.getDialogWidth();
+  const isTablet = DeviceHelper.isTablet();
+  const maxWidth = isTablet ? 480 : 400;
 
   useImperativeHandle(ref, () => ({
     show: (params: DialogParams) => {
@@ -113,11 +116,18 @@ const Dialog = forwardRef<DialogRef, {}>((props, ref) => {
     <Modal transparent visible={visible} animationType="none" onRequestClose={handleHide}>
       <View style={styles.overlay}>
          <Animated.View style={[styles.backdrop, { opacity: animValue }]} />
-         
-         <Animated.View style={[styles.dialogContainer, { opacity: animValue, transform: [{ scale: scaleAnim }] }]}>
+
+         <Animated.View style={[
+           styles.dialogContainer,
+           {
+             width: Math.min(dialogWidth, maxWidth),
+             maxWidth: maxWidth,
+           },
+           { opacity: animValue, transform: [{ scale: scaleAnim }] }
+         ]}>
             {/* Icon */}
             <View style={[styles.iconContainer, { backgroundColor: iconBg }]}>
-                <MaterialIcons name={iconName} size={48} color={iconColor} />
+                <MaterialIcons name={iconName} size={isTablet ? 56 : 48} color={iconColor} />
             </View>
 
             {/* Text Content */}
@@ -171,7 +181,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.4)', // dark dim
   },
   dialogContainer: {
-    width: width - 64, // mx-8 approx
     backgroundColor: '#ffffff',
     borderRadius: 24, // rounded-xl +
     padding: 32, // p-8
@@ -181,6 +190,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 24,
     elevation: 10,
+    alignSelf: 'center',
+    marginHorizontal: 32,
   },
   iconContainer: {
     width: 80,
