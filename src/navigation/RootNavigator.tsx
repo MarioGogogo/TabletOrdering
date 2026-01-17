@@ -16,8 +16,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import LoginScreen from '../screens/LoginScreen';
 // 首页（门店看板）
 import HomeScreen from '../screens/HomeScreen';
-// 点单页面
-import OrderScreen from '../screens/OrderScreen';
+// 点单页面（使用 WatermelonDB 版本）
+import OrderScreen from '../screens/OrderScreenWithDB';
 // 主包：Tab 导航
 import TabNavigator from './TabNavigator';
 
