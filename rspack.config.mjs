@@ -66,6 +66,11 @@ export default Repack.defineRspackConfig({
           type: 'remote',
           outputPath: path.join(__dirname, 'build/output/android/remote'),
         },
+        {
+          include: /orders/,
+          type: 'remote',
+          outputPath: path.join(__dirname, 'build/output/android/remote'),
+        },
       ],
     }),
   ].filter(Boolean),

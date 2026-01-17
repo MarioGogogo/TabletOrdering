@@ -19,6 +19,15 @@ import HomeScreen from '../screens/HomeScreen';
 // 点单页面（使用 WatermelonDB 版本）
 import OrderScreen from '../screens/OrderScreenWithDB';
 
+// 分包懒加载
+const OrdersScreen = React.lazy(
+  () => import(
+    /* webpackChunkName: "orders" */
+    /* webpackPrefetch: true */
+    '../screens/OrdersScreen'
+  )
+);
+
 
 // 分包加载状态
 function ChunkLoader() {
@@ -33,6 +42,7 @@ export type RootStackParamList = {
   Login: undefined;
   Home: undefined;
   Order: undefined;
+  Orders: undefined;
   BundleError: { bundleName: string };
 };
 
@@ -166,6 +176,15 @@ export default function RootNavigator() {
         <Stack.Screen
           name="Order"
           component={OrderScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+
+        {/* 订单管理页面（分包加载） */}
+        <Stack.Screen
+          name="Orders"
+          component={OrdersScreen}
           options={{
             headerShown: false,
           }}

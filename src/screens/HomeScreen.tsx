@@ -22,7 +22,6 @@ import ChunkErrorBoundary from '../components/ChunkErrorBoundary';
 
 // 静态导入 - 始终直接加载的组件
 import DashboardScreen from './DashboardScreen';
-import OrdersScreen from './OrdersScreen';
 import MemberScreen from './MemberScreen';
 import OrderScreen from './OrderScreen';
 
@@ -33,17 +32,22 @@ const TableScreen = lazy(() =>
   import(/* webpackChunkName: "table" */ './TableScreen')
 );
 
+const OrdersScreen = lazy(() =>
+  import(/* webpackChunkName: "orders" */ './OrdersScreen')
+);
+
 // 加载占位符组件
-const TableScreenLoader = () => (
+const ChunkLoader = () => (
   <View style={styles.loadingContainer}>
     <ActivityIndicator size="large" color={COLORS.primary} />
     <Text style={styles.loadingText}>加载中...</Text>
   </View>
 );
 
-// 开发环境：预加载 TableScreen 模块，避免切换时的加载延迟
+// 开发环境：预加载分包模块，避免切换时的加载延迟
 if (__DEV__) {
   import('./TableScreen').catch(console.error);
+  import('./OrdersScreen').catch(console.error);
 }
 
 // 常量
@@ -88,7 +92,7 @@ export default function HomeScreen() {
               setTimeout(() => setActivePage('Table'), 100);
             }}
           >
-            <Suspense fallback={<TableScreenLoader />}>
+            <Suspense fallback={<ChunkLoader />}>
               <TableScreen />
             </Suspense>
           </ChunkErrorBoundary>
@@ -97,7 +101,19 @@ export default function HomeScreen() {
         return <OrderScreen />;
 
       case 'Orders':
-        return <OrdersScreen />;
+        return (
+          <ChunkErrorBoundary
+            onGoBack={() => setActivePage('Home')}
+            onRetry={() => {
+              setActivePage('Home');
+              setTimeout(() => setActivePage('Orders'), 100);
+            }}
+          >
+            <Suspense fallback={<ChunkLoader />}>
+              <OrdersScreen />
+            </Suspense>
+          </ChunkErrorBoundary>
+        );
       case 'Member':
         return <MemberScreen />;
       default:

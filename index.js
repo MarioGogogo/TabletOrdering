@@ -19,12 +19,21 @@ if (__DEV__) {
   console.log(
     '[Index] Running in development mode (Local), skipping cloud config...',
   );
+  // 开发模式提示信息
+  console.log(
+    '[Index] DevServer 会自动提供分包配置。分包列表：table, orders',
+  );
 } else {
   // 生产环境：从云端获取最新的分包配置
   console.log('[Index] Running in Production mode, fetching cloud config...');
   fetchBundleConfigWithRetry()
     .then(config => {
       console.log('[Index] Cloud bundle config loaded successfully:', config);
+      // 期望的配置格式：
+      // {
+      //   "table": { "url": "https://cdn.example.com/table.chunk.bundle", "version": "1.0.0" },
+      //   "orders": { "url": "https://cdn.example.com/orders.chunk.bundle", "version": "1.0.0" }
+      // }
       updateRemoteBundleConfig(config);
     })
     .catch(error => {

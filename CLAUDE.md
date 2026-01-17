@@ -18,8 +18,6 @@ npm run android                  # Android 模拟器
 # 代码检查和测试
 npm run lint                     # ESLint 检查
 npm test                         # Jest 单元测试
-npm test -- src/__tests__/utils.test.ts     # 运行单个测试文件
-npm test -- --watch              # Watch 模式
 
 # 构建生产包
 npm run build:android            # 发布 APK（Release）
@@ -27,9 +25,6 @@ npm run build:android:debug      # Debug APK
 
 # 分析 Bundle 大小
 npm run analyze                  # 生成 Bundle 分析报告 (build/rsdoctor-report/)
-
-# 项目重命名
-npm run rename                   # 运行项目重命名脚本
 ```
 
 ## 项目架构
@@ -368,8 +363,6 @@ npm test -- --watch
 
 **测试框架**: Jest 29.6.3 + React Test Renderer
 
-**配置说明**: 测试配置在 `jest.config.js` 中使用默认的 `react-native` preset。
-
 ## 代码质量
 
 ```bash
@@ -384,7 +377,6 @@ npx prettier --write src/
 - `.eslintrc.js`: 使用 @react-native/eslint-config
 - `.prettierrc.js`: 单引号、尾逗号
 - `tsconfig.json`: 严格模式 + 装饰器支持（WatermelonDB 需要）
-- `babel.config.js`: 启用装饰器支持 (@babel/plugin-proposal-decorators) 和环境变量内联
 
 ## 常见开发场景
 
