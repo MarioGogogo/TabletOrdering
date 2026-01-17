@@ -7,7 +7,7 @@
  * - 独立的 props 类型定义，便于类型检查
  */
 
-import React, { useCallback } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -85,15 +85,9 @@ const ProductCard = React.memo<ProductCardProps>(({ product, numColumns, onQuant
   // 预加载图片（当索引在前 20 项时优先加载）
   const shouldPreload = index < 20;
 
-  const handlePress = useCallback(() => {
-    onQuantityChange(product.id, 1);
-  }, [product.id, onQuantityChange]);
-
   return (
-    <TouchableOpacity
+    <View
       style={[styles.card, { width: cardWidth, height: cardHeight, marginHorizontal: COLUMN_GAP / 2 }]}
-      onPress={handlePress}
-      activeOpacity={0.7}
     >
       <View style={styles.imageContainer}>
         <FastImage
@@ -143,7 +137,7 @@ const ProductCard = React.memo<ProductCardProps>(({ product, numColumns, onQuant
           </View>
         </View>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 });
 

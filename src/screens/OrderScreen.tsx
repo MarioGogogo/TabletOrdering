@@ -19,10 +19,12 @@ import {
   Dimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  Modal,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import ProductCard from '../components/ProductCard';
 import type { Product } from '../components/ProductCard';
+import Dialog, { DialogRef } from '../components/Dialog';
 
 // 导入菜品数据
 import dishesData from '../data/dishes.json';
@@ -97,27 +99,7 @@ interface CartItem {
   tags?: string[];
 }
 
-const mockCartItems: CartItem[] = [
-  {
-    id: '1',
-    name: '摩卡咖啡',
-    specs: '常温、不加奶、不加糖',
-    quantity: 1,
-    price: 48.0,
-  },
-  { id: '2', name: '巧克力物语', specs: '默认配置', quantity: 1, price: 48.0 },
-  { id: '3', name: '摩卡咖啡', specs: '冰、少糖', quantity: 1, price: 48.0 },
-  {
-    id: '4',
-    name: '摩卡咖啡',
-    specs: '',
-    quantity: 1,
-    price: 48.0,
-    isCombo: true,
-    comboItems: '摩卡咖啡【常规】、巧克力物语蛋糕【小份】',
-    tags: ['少冰', '不加糖'],
-  },
-];
+const mockCartItems: CartItem[] = [];
 
 // ==================== 分类配置 ====================
 // 从菜品数据中动态生成分类配置
@@ -211,6 +193,10 @@ export default function OrderScreen() {
   const [products, setProducts] = useState(mockProducts);
   const [searchText, setSearchText] = useState('');
   const [note, setNote] = useState('');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+  // 对话框引用
+  const dialogRef = useRef<DialogRef>(null);
 
   // FlashList 引用
   const flashListRef = useRef<any>(null);
@@ -220,11 +206,57 @@ export default function OrderScreen() {
 
   // 计算合计
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPrice = 28.8; // 模拟价格
-  const discount = 2.0;
+  const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const discount = 0; // 暂无优惠
 
-  // 更新购物车商品数量
+  // 更新商品数量（菜品列表和购物车双向同步）
+  const updateProductQuantity = useCallback((id: string, delta: number) => {
+    // 1. 更新菜品列表中的数量
+    setProducts(prods =>
+      prods.map(prod =>
+        prod.id === id
+          ? { ...prod, quantity: Math.max(0, prod.quantity + delta) }
+          : prod,
+      ),
+    );
+
+    // 2. 同步更新购物车
+    setCartItems(items => {
+      const existingItem = items.find(item => item.id === id);
+      
+      if (existingItem) {
+        // 已存在：更新数量
+        const newQuantity = Math.max(0, existingItem.quantity + delta);
+        if (newQuantity === 0) {
+          // 数量为0：移除商品
+          return items.filter(item => item.id !== id);
+        }
+        return items.map(item =>
+          item.id === id ? { ...item, quantity: newQuantity } : item,
+        );
+      } else if (delta > 0) {
+        // 不存在且是增加：添加新商品到购物车
+        const product = products.find(p => p.id === id);
+        if (product) {
+          return [
+            ...items,
+            {
+              id: product.id,
+              name: product.name,
+              specs: '默认配置',
+              quantity: delta,
+              price: product.price,
+            },
+          ];
+        }
+      }
+      return items;
+    });
+  }, [products]);
+
+  // 更新购物车商品数量（同步更新菜品列表）
   const updateCartItemQuantity = (id: string, delta: number) => {
+    // 1. 更新购物车
     setCartItems(items =>
       items
         .map(item =>
@@ -234,10 +266,8 @@ export default function OrderScreen() {
         )
         .filter(item => item.quantity > 0),
     );
-  };
 
-  // 更新商品数量
-  const updateProductQuantity = useCallback((id: string, delta: number) => {
+    // 2. 同步更新菜品列表中的数量
     setProducts(prods =>
       prods.map(prod =>
         prod.id === id
@@ -245,7 +275,65 @@ export default function OrderScreen() {
           : prod,
       ),
     );
-  }, []);
+  };
+
+  // 整单取消
+  const handleCancelOrder = useCallback(() => {
+    if (cartItems.length === 0) {
+      return;
+    }
+    dialogRef.current?.show({
+      type: 'warning',
+      title: '确认取消',
+      message: '确定要取消整单吗？所有商品将被清空',
+      confirmText: '确定',
+      cancelText: '取消',
+      onConfirm: () => {
+        // 清空购物车
+        setCartItems([]);
+        // 重置所有商品数量
+        setProducts(mockProducts);
+        // 清空备注
+        setNote('');
+      },
+    });
+  }, [cartItems.length]);
+
+  // 打开支付弹窗
+  const handleCheckout = useCallback(() => {
+    if (cartItems.length === 0) {
+      dialogRef.current?.show({
+        type: 'warning',
+        title: '提示',
+        message: '购物车为空，请先添加商品',
+        confirmText: '我知道了',
+      });
+      return;
+    }
+    setShowPaymentModal(true);
+  }, [cartItems.length]);
+
+  // 处理支付
+  const handlePayment = useCallback((method: string) => {
+    setShowPaymentModal(false);
+    // 模拟支付成功
+    setTimeout(() => {
+      dialogRef.current?.show({
+        type: 'success',
+        title: '支付成功',
+        message: `已通过${method}支付 ¥${totalPrice.toFixed(2)}`,
+        confirmText: '确定',
+        onConfirm: () => {
+          // 清空购物车
+          setCartItems([]);
+          // 重置所有商品数量
+          setProducts(mockProducts);
+          // 清空备注
+          setNote('');
+        },
+      });
+    }, 300);
+  }, [totalPrice]);
 
   // 使用常量定义的列数
   const numColumns = NUM_COLUMNS;
@@ -436,19 +524,21 @@ export default function OrderScreen() {
             </View>
           ))}
 
-          {/* 备注区域 */}
-          <View style={styles.noteSection}>
-            <TextInput
-              style={styles.noteInput}
-              placeholder="备注信息..."
-              placeholderTextColor={COLORS.gray400}
-              value={note}
-              onChangeText={setNote}
-              multiline
-              numberOfLines={3}
-              textAlignVertical="top"
-            />
-          </View>
+          {/* 备注区域 - 只有购物车有数据时才显示 */}
+          {cartItems.length > 0 && (
+            <View style={styles.noteSection}>
+              <TextInput
+                style={styles.noteInput}
+                placeholder="备注信息..."
+                placeholderTextColor={COLORS.gray400}
+                value={note}
+                onChangeText={setNote}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+            </View>
+          )}
         </ScrollView>
 
         {/* 底部结算区域 */}
@@ -468,11 +558,11 @@ export default function OrderScreen() {
             </View>
           </View>
           <View style={styles.cartActions}>
-            <TouchableOpacity style={styles.cancelButton}>
+            <TouchableOpacity style={styles.cancelButton} onPress={handleCancelOrder}>
               <Text style={styles.cancelButtonIcon}>🗑</Text>
               <Text style={styles.cancelButtonText}>整单取消</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.checkoutButton}>
+            <TouchableOpacity style={styles.checkoutButton} onPress={handleCheckout}>
               <Text style={styles.checkoutButtonText}>
                 结账 ¥{totalPrice.toFixed(1)}
               </Text>
@@ -579,6 +669,62 @@ export default function OrderScreen() {
           />
         </View>
       </View>
+
+      {/* 支付弹窗 */}
+      <Modal
+        visible={showPaymentModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowPaymentModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.paymentModal}>
+            <View style={styles.paymentHeader}>
+              <Text style={styles.paymentTitle}>选择支付方式</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowPaymentModal(false)}
+              >
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.paymentAmount}>
+              <Text style={styles.paymentAmountLabel}>应付金额</Text>
+              <Text style={styles.paymentAmountValue}>¥ {totalPrice.toFixed(2)}</Text>
+            </View>
+
+            <View style={styles.paymentMethods}>
+              <TouchableOpacity
+                style={styles.paymentMethodButton}
+                onPress={() => handlePayment('微信')}
+              >
+                <Text style={styles.paymentMethodIcon}>💬</Text>
+                <Text style={styles.paymentMethodText}>微信支付</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.paymentMethodButton}
+                onPress={() => handlePayment('支付宝')}
+              >
+                <Text style={styles.paymentMethodIcon}>📱</Text>
+                <Text style={styles.paymentMethodText}>支付宝</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.paymentMethodButton}
+                onPress={() => handlePayment('现金')}
+              >
+                <Text style={styles.paymentMethodIcon}>💵</Text>
+                <Text style={styles.paymentMethodText}>现金</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 自定义对话框 */}
+      <Dialog ref={dialogRef} />
     </View>
   );
 }
@@ -955,5 +1101,88 @@ const styles = StyleSheet.create({
     // paddingHorizontal: 24,
     paddingTop: 12,
     // paddingBottom: 24,
+  },
+
+  // ==================== 支付弹窗样式 ====================
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  paymentModal: {
+    width: 400,
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  paymentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.gray100,
+  },
+  paymentTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.gray900,
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.gray100,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    fontSize: 16,
+    color: COLORS.gray500,
+    fontWeight: '500',
+  },
+  paymentAmount: {
+    alignItems: 'center',
+    paddingVertical: 24,
+    backgroundColor: COLORS.gray50,
+  },
+  paymentAmountLabel: {
+    fontSize: 14,
+    color: COLORS.gray500,
+    marginBottom: 8,
+  },
+  paymentAmountValue: {
+    fontSize: 36,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  paymentMethods: {
+    padding: 24,
+    gap: 12,
+  },
+  paymentMethodButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: COLORS.gray50,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.gray200,
+  },
+  paymentMethodIcon: {
+    fontSize: 24,
+    marginRight: 16,
+  },
+  paymentMethodText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.gray900,
   },
 });
