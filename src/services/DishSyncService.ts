@@ -48,7 +48,7 @@ export class DishSyncService {
     const { removeNotFound = true, onProgress, onComplete } = options;
 
     try {
-      await database.action(async () => {
+      await database.write(async () => {
         const dishesCollection = database.get<Dish>('dishes');
 
         // 1. 获取所有本地菜品（用于快速查找）
@@ -88,7 +88,7 @@ export class DishSyncService {
                 dish.isSoldOut = remoteDish.isSoldOut || false;
                 dish.isHot = remoteDish.isHot || false;
                 dish.sortOrder = remoteDish.sortOrder || null;
-                dish.updatedAt = new Date();
+                dish.updatedAt = Date.now();  // 使用时间戳而不是 Date 对象
               });
               stats.updated++;
             } else {
@@ -110,8 +110,8 @@ export class DishSyncService {
                 dish.isSoldOut = remoteDish.isSoldOut || false;
                 dish.isHot = remoteDish.isHot || false;
                 dish.sortOrder = remoteDish.sortOrder || null;
-                dish.createdAt = new Date();
-                dish.updatedAt = new Date();
+                dish.createdAt = Date.now();  // 使用时间戳而不是 Date 对象
+                dish.updatedAt = Date.now();
               });
               stats.created++;
             }
@@ -208,14 +208,14 @@ export class DishSyncService {
    */
   static async getHotDishes(limit: number = 10): Promise<Dish[]> {
     const dishesCollection = database.get<Dish>('dishes');
-    return dishesCollection
+    const allHotDishes = await dishesCollection
       .query(
         Q.where('is_available', true),
         Q.where('is_hot', true),
         Q.sortBy('sales', Q.desc),
       )
-      .take(limit)
       .fetch();
+    return allHotDishes.slice(0, limit);
   }
 
   /**
@@ -225,7 +225,7 @@ export class DishSyncService {
     dishId: string,
     isSoldOut: boolean,
   ): Promise<void> {
-    await database.action(async () => {
+    await database.write(async () => {
       const dishesCollection = database.get<Dish>('dishes');
       const dishes = await dishesCollection
         .query(Q.where('dish_id', dishId))
@@ -234,7 +234,7 @@ export class DishSyncService {
       if (dishes.length > 0) {
         await dishes[0].update(dish => {
           dish.isSoldOut = isSoldOut;
-          dish.updatedAt = new Date();
+          dish.updatedAt = Date.now();
         });
       }
     });
@@ -246,7 +246,7 @@ export class DishSyncService {
   static async batchUpdateSoldOutStatus(
     updates: Array<{ dishId: string; isSoldOut: boolean }>,
   ): Promise<void> {
-    await database.action(async () => {
+    await database.write(async () => {
       const dishesCollection = database.get<Dish>('dishes');
 
       for (const update of updates) {
@@ -257,7 +257,7 @@ export class DishSyncService {
         if (dishes.length > 0) {
           await dishes[0].update(dish => {
             dish.isSoldOut = update.isSoldOut;
-            dish.updatedAt = new Date();
+            dish.updatedAt = Date.now();
           });
         }
       }

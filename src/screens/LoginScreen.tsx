@@ -100,17 +100,6 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
 
   // 处理确认按钮 - 登录并同步数据
   const handleConfirmPress = useCallback(async () => {
-    // 验证输入
-    if (!employeeId || pinCode.length !== 4) {
-      dialogRef.current?.show({
-        type: 'warning',
-        title: '输入不完整',
-        message: '请输入员工ID/桌号和完整的4位PIN码',
-        confirmText: '确定',
-      });
-      return;
-    }
-
     setIsSyncing(true);
 
     try {
@@ -168,7 +157,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     } finally {
       setIsSyncing(false);
     }
-  }, [employeeId, pinCode, navigation]);
+  }, [navigation]);
 
   // 处理输入框 Focus - 隐藏键盘以显示数字键盘
   const handleInputFocus = () => {

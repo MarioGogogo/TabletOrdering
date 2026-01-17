@@ -4,6 +4,10 @@
  *
  * 使用 LokiJS 适配器（纯 JS 实现，不需要原生模块）
  * 生产环境可以切换到 SQLite 适配器以获得更好的性能
+ * 
+ * 新增	远程有、本地无 → 创建新记录
+ * 更新	远程有、本地有 → 更新现有记录字段
+ * 删除	远程无、本地有 → 标记删除（removeNotFound: true 时）
  */
 
 import LokiJSAdapter from '@nozbe/watermelondb/adapters/lokijs';
@@ -14,9 +18,9 @@ import { Dish, CartItemModel, CategoryModel } from '../models';
 // 创建数据库适配器（使用 LokiJS）
 const adapter = new LokiJSAdapter({
   schema,
-  // 使用 IndexedDB（Web）或 AsyncStorage（React Native）
+  // React Native 不支持 IndexedDB，设置为 false
+  useIncrementalIndexedDB: false,
   useWebWorker: false,
-  useIncrementalIndexedDB: true,
 });
 
 // 创建数据库实例
@@ -31,7 +35,7 @@ export class DatabaseService {
    * 清空所有数据（谨慎使用）
    */
   static async clearAll() {
-    await database.action(async () => {
+    await database.write(async () => {
       await database.get('dishes').query().fetch().then(records => {
         records.forEach(record => record.markAsDeleted());
       });

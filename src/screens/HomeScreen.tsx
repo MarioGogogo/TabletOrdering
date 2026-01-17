@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, LinearGradient, Defs, Stop, Circle } from 'react-native-svg';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import OrderScreen from './OrderScreen';
 
 // 颜色配置 - 现代仪表盘配色
@@ -720,6 +721,7 @@ function DashboardContent() {
 
 export default function HomeScreen(): React.JSX.Element {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const [activePage, setActivePage] = useState('Home');
 
   // 侧边栏导航项
@@ -799,6 +801,26 @@ export default function HomeScreen(): React.JSX.Element {
             <View style={styles.statusDot} />
             <Text style={styles.statusText}>系统正常</Text>
           </View>
+
+          {/* 退出登录按钮 */}
+          <TouchableOpacity
+            style={styles.logoutButton}
+            activeOpacity={0.7}
+            onPress={() => {
+              // 重置导航栈并跳转到登录页
+              navigation.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [{ name: 'Login' }],
+                })
+              );
+            }}
+          >
+            <View style={styles.logoutIconWrapper}>
+              <Text style={styles.logoutIcon}>🚪</Text>
+            </View>
+            <Text style={styles.logoutText}>退出</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -978,6 +1000,35 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: COLORS.gray500,
     fontWeight: '500',
+  } as TextStyle,
+
+  // 退出登录按钮样式
+  logoutButton: {
+    alignItems: 'center',
+    marginTop: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: COLORS.red50,
+  } as ViewStyle,
+
+  logoutIconWrapper: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  } as ViewStyle,
+
+  logoutIcon: {
+    fontSize: 18,
+  } as TextStyle,
+
+  logoutText: {
+    fontSize: 11,
+    color: COLORS.red500,
+    fontWeight: '600',
   } as TextStyle,
 
   // 主内容区

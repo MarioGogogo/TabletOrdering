@@ -43,8 +43,9 @@ export default class Dish extends Model {
   @field('is_hot') isHot!: boolean;
   @field('sort_order') sortOrder!: number | null;
 
-  @date('created_at') createdAt!: Date;
-  @date('updated_at') updatedAt!: Date;
+  // 使用 @field 而不是 @date，因为 Schema 中定义为 number（时间戳）
+  @field('created_at') createdAt!: number;
+  @field('updated_at') updatedAt!: number;
 
   // 计算属性 - 判断是否可以购买
   get canPurchase(): boolean {
