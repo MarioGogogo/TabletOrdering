@@ -10020,26 +10020,6 @@
     "isHot": false
   },
   {
-    "id": "dish_1003",
-    "categoryId": 14,
-    "categoryName": "茶饮",
-    "name": "Cinnamon buns",
-    "price": "116.84",
-    "image": "https://www.themealdb.com/images/media/meals/as88dq1762772486.jpg",
-    "sales": 717,
-    "isHot": true
-  },
-  {
-    "id": "dish_1004",
-    "categoryId": 14,
-    "categoryName": "茶饮",
-    "name": "Classic Christmas pudding",
-    "price": "93.99",
-    "image": "https://www.themealdb.com/images/media/meals/1d85821576790598.jpg",
-    "sales": 141,
-    "isHot": false
-  },
-  {
     "id": "dish_1005",
     "categoryId": 14,
     "categoryName": "茶饮",
@@ -10048,5 +10028,15 @@
     "image": "https://www.themealdb.com/images/media/meals/0h1b7m1764120235.jpg",
     "sales": 8,
     "isHot": true
+  },
+    {
+    "id": "dish_1006",
+    "categoryId": 14,
+    "categoryName": "茶饮",
+    "name": "Vanilla alfajores",
+    "price": "50.14",
+    "image": "https://www.themealdb.com/images/media/meals/3wnyvh1764373818.jpg",
+    "sales": 520,
+    "isHot": false
   }
 ]
