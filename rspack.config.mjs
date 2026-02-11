@@ -9,9 +9,13 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as Repack from '@callstack/repack';
+import { RsdoctorRspackPlugin } from '@rsdoctor/rspack-plugin';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// 是否开启 Bundle 分析模式
+const isAnalyze = process.env.ANALYZE === 'true';
 
 /**
  * Rspack configuration enhanced with Re.Pack defaults for React Native.
@@ -44,31 +48,25 @@ export default Repack.defineRspackConfig({
     ],
   },
   plugins: [
+    // Rsdoctor 分析插件：通过 ANALYZE=true 环境变量开启
+    isAnalyze && new RsdoctorRspackPlugin({
+      // 分析功能开关（只启用 bundle 分析，避免与 Re.Pack 冲突）
+      features: ['bundle'],
+      // 禁用客户端服务器模式，避免调试器问题
+      disableClientServer: false,
+      // 生成静态 HTML 报告
+      reportDir: './build/rsdoctor-report',
+    }),
     new Repack.RepackPlugin({
       platform: 'android', // 明确指定平台
       // 多分包配置：每个功能模块独立打包
       extraChunks: [
         {
-          include: /feature/,
-          type: 'remote',
-          outputPath: path.join(__dirname, 'build/output/android/remote'),
-        },
-        {
-          include: /settings/,
-          type: 'remote',
-          outputPath: path.join(__dirname, 'build/output/android/remote'),
-        },
-        {
-          include: /shop/,
-          type: 'remote',
-          outputPath: path.join(__dirname, 'build/output/android/remote'),
-        },
-        {
-          include: /update/,
+          include: /table/,
           type: 'remote',
           outputPath: path.join(__dirname, 'build/output/android/remote'),
         },
       ],
     }),
-  ],
+  ].filter(Boolean),
 });

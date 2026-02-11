@@ -1,9 +1,9 @@
 /**
- * 根导航器 - 包含登录页、Tab 导航和分包页面
+ * 根导航器 - 包含 Login, Home, Order 核心页面
  *
  * 起始页：LoginScreen（登录页面）
- * 主包：TabNavigator
- * 分包：SettingsScreen（生产环境）/ 主包（开发环境）
+ * 首页：HomeScreen（门店看板）
+ * 分包：TableScreen（支持远程加载）
  */
 
 import React, { Suspense, useEffect } from 'react';
@@ -16,27 +16,9 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import LoginScreen from '../screens/LoginScreen';
 // 首页（门店看板）
 import HomeScreen from '../screens/HomeScreen';
-// 点单页面
-import OrderScreen from '../screens/OrderScreen';
-// 主包：Tab 导航
-import TabNavigator from './TabNavigator';
+// 点单页面（使用 WatermelonDB 版本）
+import OrderScreen from '../screens/OrderScreenWithDB';
 
-// 分包页面：开发模式主包，生产模式分包
-const SettingsScreen = __DEV__
-  ? require('../screens/SettingsScreen').default
-  : React.lazy(() => import(/* webpackChunkName: "settings" */ '../screens/SettingsScreen'));
-
-const ShopScreen = __DEV__
-  ? require('../screens/ShopScreen').default
-  : React.lazy(() => import(/* webpackChunkName: "shop" */ '../screens/ShopScreen'));
-
-const FeatureScreen = __DEV__
-  ? require('../screens/FeatureScreen').default
-  : React.lazy(() => import(/* webpackChunkName: "feature" */ '../screens/FeatureScreen'));
-
-const UpdateScreen = __DEV__
-  ? require('../screens/UpdateTestScreen').default
-  : React.lazy(() => import(/* webpackChunkName: "update" */ '../screens/UpdateTestScreen'));
 
 // 分包加载状态
 function ChunkLoader() {
@@ -51,11 +33,6 @@ export type RootStackParamList = {
   Login: undefined;
   Home: undefined;
   Order: undefined;
-  MainTabs: undefined;
-  Settings: undefined;
-  shop: undefined;
-  feature: undefined;
-  update: undefined;
   BundleError: { bundleName: string };
 };
 
@@ -165,7 +142,7 @@ export default function RootNavigator() {
     <Suspense fallback={<ChunkLoader />}>
       <Stack.Navigator
         screenOptions={stackScreenOptions}
-        initialRouteName={isLoggedIn ? "MainTabs" : "Login"}
+        initialRouteName={isLoggedIn ? "Home" : "Login"}
       >
         {/* 登录页面（起始页） */}
         <Stack.Screen
@@ -194,14 +171,6 @@ export default function RootNavigator() {
           }}
         />
 
-        {/* 主包：Tab 导航（底部Tab栏切换不使用push动画） */}
-        <Stack.Screen name="MainTabs" component={TabNavigator} />
-
-        {/* 分包页面：开发模式主包，生产模式分包（使用iOS push动画） */}
-        <Stack.Screen name="Settings" component={SettingsScreen} />
-        <Stack.Screen name="shop" component={ShopScreen} />
-        <Stack.Screen name="feature" component={FeatureScreen} />
-        <Stack.Screen name="update" component={UpdateScreen} />
 
         {/* 分包错误页面 */}
         <Stack.Screen name="BundleError" component={BundleErrorScreen} />

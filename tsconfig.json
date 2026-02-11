@@ -3,6 +3,9 @@
   "compilerOptions": {
     "types": ["jest"],
     "jsx": "react-jsx",
+    // 启用装饰器支持 (WatermelonDB 需要)
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
   "include": ["**/*.ts", "**/*.tsx"],
   "exclude": ["**/node_modules", "**/Pods", "**/TabletOrdering"]

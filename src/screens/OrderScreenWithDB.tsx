@@ -1,13 +1,18 @@
 /**
- * 点单界面 - POS点菜系统主界面
+ * 点单界面 - 使用 WatermelonDB 版本
  *
- * 100%复刻 order.html UI
- * 适配横屏 iPad 设备
+ * 从 JSON 数据迁移到 WatermelonDB 存储
+ * 支持每日同步最新菜品数据
  *
  * @format
  */
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, {
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+} from 'react';
 import {
   View,
   Text,
@@ -19,29 +24,19 @@ import {
   Dimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
-  Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
+import { useDatabase } from '@nozbe/watermelondb/hooks';
+import { Database } from '@nozbe/watermelondb';
+import { Q } from '@nozbe/watermelondb';
 import ProductCard from '../components/ProductCard';
 import type { Product } from '../components/ProductCard';
-import Dialog, { DialogRef } from '../components/Dialog';
-
-// 导入菜品数据
-import dishesData from '../data/dishes.json';
+import Dish from '../models/Dish';
+import DishSyncService from '../services/DishSyncService';
+import DataMigrationService from '../services/DataMigrationService';
 
 // 菜品数据接口定义
-interface Dish {
-  id: string;
-  categoryId: number;
-  categoryName: string;
-  name: string;
-  price: string;
-  image: string;
-  sales: number;
-  isHot: boolean;
-}
-
-// 分类数据接口定义
 interface Category {
   id: number;
   name: string;
@@ -82,7 +77,8 @@ const COLORS = {
 };
 
 // 获取屏幕尺寸
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } =
+  Dimensions.get('window');
 
 // 左侧面板宽度 (300-340px 根据屏幕适配，匹配HTML的320px)
 const LEFT_PANEL_WIDTH = SCREEN_WIDTH >= 1200 ? 340 : 320;
@@ -99,70 +95,41 @@ interface CartItem {
   tags?: string[];
 }
 
-const mockCartItems: CartItem[] = [];
-
-// ==================== 分类配置 ====================
-// 从菜品数据中动态生成分类配置
-const generateCategoryConfig = (dishes: Dish[]): Category[] => {
-  // 使用 Map 来收集每个分类的菜品数量
-  const categoryMap = new Map<number, { name: string; count: number }>();
-
-  dishes.forEach(dish => {
-    const existing = categoryMap.get(dish.categoryId);
-    if (existing) {
-      existing.count++;
-    } else {
-      categoryMap.set(dish.categoryId, {
-        name: dish.categoryName,
-        count: 1,
-      });
-    }
-  });
-
-  // 转换为数组并按 categoryId 排序
-  return Array.from(categoryMap.entries())
-    .map(([id, info]) => ({
-      id,
-      name: info.name,
-      count: info.count,
-    }))
-    .sort((a, b) => a.id - b.id);
-};
-
-// 生成分类配置
-const CATEGORY_CONFIG: Category[] = generateCategoryConfig(
-  dishesData as Dish[],
-);
-
-// 根据配置生成分类列表
-const categories = CATEGORY_CONFIG.map(cat => cat.name);
-
-// 计算每个分类的起始索引
-const getCategoryStartIndex = (categoryIndex: number): number => {
-  let startIndex = 0;
-  for (let i = 0; i < categoryIndex; i++) {
-    startIndex += CATEGORY_CONFIG[i].count;
-  }
-  return startIndex;
-};
-
-// 将菜品数据转换为商品数据格式
-const convertDishesToProducts = (dishes: Dish[]): Product[] => {
-  return dishes.map(dish => ({
-    id: dish.id,
-    name: dish.name,
-    price: parseFloat(dish.price),
-    image: dish.image,
-    sales: dish.sales,
-    isHot: dish.isHot,
-    categoryName: dish.categoryName,
-    categoryId: dish.categoryId,
-    quantity: 0,
-  }));
-};
+const mockCartItems: CartItem[] = [
+  {
+    id: '1',
+    name: '摩卡咖啡',
+    specs: '常温、不加奶、不加糖',
+    quantity: 1,
+    price: 48.0,
+  },
+  {
+    id: '2',
+    name: '巧克力物语',
+    specs: '默认配置',
+    quantity: 1,
+    price: 48.0,
+  },
+  {
+    id: '3',
+    name: '摩卡咖啡',
+    specs: '冰、少糖',
+    quantity: 1,
+    price: 48.0,
+  },
+  {
+    id: '4',
+    name: '摩卡咖啡',
+    specs: '',
+    quantity: 1,
+    price: 48.0,
+    isCombo: true,
+    comboItems: '摩卡咖啡【常规】、巧克力物语蛋糕【小份】',
+    tags: ['少冰', '不加糖'],
+  },
+];
 
 // ==================== 卡片尺寸计算 ====================
-// 与 ProductCard 组件保持一致的尺寸计算（使用上面定义的 LEFT_PANEL_WIDTH）
 const CONTAINER_PADDING = 24;
 const COLUMN_GAP = 20;
 const NUM_COLUMNS = 4;
@@ -174,89 +141,186 @@ const columnWidth = containerWidth / NUM_COLUMNS;
 const cardWidth = columnWidth - COLUMN_GAP;
 const ACTUAL_CARD_HEIGHT = cardWidth * CARD_ASPECT_RATIO;
 
-// 商品项高度 (FlashList 的 estimatedItemSize) - 使用实际计算值
+// 商品项高度
 const ITEM_ESTIMATED_SIZE = Math.round(ACTUAL_CARD_HEIGHT);
 
-// 每行高度 = 卡片高度 + 行间距 (ItemSeparatorComponent 的 12px)
+// 每行高度 = 卡片高度 + 行间距
 const ROW_HEIGHT = ITEM_ESTIMATED_SIZE + 12;
-
-// 使用导入的菜品数据转换为商品列表
-const mockProducts: Product[] = convertDishesToProducts(dishesData as Dish[]);
 
 // 就餐类型选项
 type DiningType = 'dineIn' | 'takeOut' | 'delivery';
 
-export default function OrderScreen() {
+/**
+ * 将 WatermelonDB 的 Dish 模型转换为 ProductCard 需要的格式
+ */
+const dishToProduct = (dish: Dish): Product => ({
+  id: dish.id,
+  name: dish.name,
+  price: dish.price,
+  image: dish.imageUrl,
+  sales: dish.sales || 0,
+  isHot: dish.isHot,
+  categoryName: dish.categoryName,
+  categoryId: dish.categoryId,
+  quantity: 0,
+  isSoldOut: dish.isSoldOut,
+  hasDiscount: dish.hasDiscount,
+  originalPrice: dish.originalPrice,
+});
+
+export default function OrderScreenWithDB() {
+  // 获取数据库实例
+  const database = useDatabase();
+
   const [diningType, setDiningType] = useState<DiningType>('dineIn');
   const [selectedCategory, setSelectedCategory] = useState(0);
   const [cartItems, setCartItems] = useState(mockCartItems);
-  const [products, setProducts] = useState(mockProducts);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [categoryConfig, setCategoryConfig] = useState<Category[]>([]);
   const [searchText, setSearchText] = useState('');
   const [note, setNote] = useState('');
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-
-  // 对话框引用
-  const dialogRef = useRef<DialogRef>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [syncStatus, setSyncStatus] = useState('');
 
   // FlashList 引用
   const flashListRef = useRef<any>(null);
 
-  // 标记是否正在通过点击分类触发的程序化滚动（防止滚动监听导致分类闪烁）
+  // 标记是否正在通过点击分类触发的程序化滚动
   const isScrollingByPress = useRef(false);
 
   // 计算合计
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const discount = 0; // 暂无优惠
+  const totalPrice = 28.8; // 模拟价格
+  const discount = 2.0;
 
-  // 更新商品数量（菜品列表和购物车双向同步）
-  const updateProductQuantity = useCallback((id: string, delta: number) => {
-    // 1. 更新菜品列表中的数量
-    setProducts(prods =>
-      prods.map(prod =>
-        prod.id === id
-          ? { ...prod, quantity: Math.max(0, prod.quantity + delta) }
-          : prod,
-      ),
-    );
+  /**
+   * 加载菜品数据
+   */
+  useEffect(() => {
+    loadDishesFromDatabase();
+  }, [database]);
 
-    // 2. 同步更新购物车
-    setCartItems(items => {
-      const existingItem = items.find(item => item.id === id);
-      
-      if (existingItem) {
-        // 已存在：更新数量
-        const newQuantity = Math.max(0, existingItem.quantity + delta);
-        if (newQuantity === 0) {
-          // 数量为0：移除商品
-          return items.filter(item => item.id !== id);
-        }
-        return items.map(item =>
-          item.id === id ? { ...item, quantity: newQuantity } : item,
-        );
-      } else if (delta > 0) {
-        // 不存在且是增加：添加新商品到购物车
-        const product = products.find(p => p.id === id);
-        if (product) {
-          return [
-            ...items,
-            {
-              id: product.id,
-              name: product.name,
-              specs: '默认配置',
-              quantity: delta,
-              price: product.price,
-            },
-          ];
-        }
+  /**
+   * 从数据库加载菜品数据
+   */
+  const loadDishesFromDatabase = async () => {
+    try {
+      setIsLoading(true);
+      setSyncStatus('加载数据...');
+
+      // 检查是否需要迁移
+      const needsMigration = await DataMigrationService.needsMigration();
+
+      if (needsMigration) {
+        setSyncStatus('正在导入初始数据...');
+        await DataMigrationService.migrateFromJSON(false);
       }
-      return items;
-    });
-  }, [products]);
 
-  // 更新购物车商品数量（同步更新菜品列表）
+      // 从数据库获取所有可售菜品
+      setSyncStatus('正在加载菜品...');
+      const dishes = await database
+        .get<Dish>('dishes')
+        .query(Q.where('is_available', true))
+        .fetch();
+
+      // 转换为 Product 格式
+      const productList = dishes.map(dishToProduct);
+      setProducts(productList);
+
+      // 生成分类配置
+      const categoryConfig = generateCategoryConfig(dishes);
+      setCategoryConfig(categoryConfig);
+      setCategories(categoryConfig.map(cat => cat.name));
+
+      setSyncStatus(`已加载 ${dishes.length} 道菜品`);
+    } catch (error) {
+      console.error('加载菜品失败:', error);
+      setSyncStatus('加载失败');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * 从菜品数据中动态生成分类配置
+   */
+  const generateCategoryConfig = (dishes: Dish[]): Category[] => {
+    const categoryMap = new Map<number, { name: string; count: number }>();
+
+    dishes.forEach(dish => {
+      const existing = categoryMap.get(dish.categoryId);
+      if (existing) {
+        existing.count++;
+      } else {
+        categoryMap.set(dish.categoryId, {
+          name: dish.categoryName,
+          count: 1,
+        });
+      }
+    });
+
+    return Array.from(categoryMap.entries())
+      .map(([id, info]) => ({
+        id,
+        name: info.name,
+        count: info.count,
+      }))
+      .sort((a, b) => a.id - b.id);
+  };
+
+  /**
+   * 模拟从远程同步数据
+   * 实际使用时替换为真实的 API 调用
+   */
+  const syncFromRemote = async () => {
+    try {
+      setSyncStatus('正在同步...');
+      setIsLoading(true);
+
+      // TODO: 替换为实际的 API 调用
+      // const remoteDishes = await fetchDishesFromAPI();
+
+      // 暂时使用本地 JSON 模拟
+      const dishesJson = require('../data/dishes.json');
+      const remoteDishes = dishesJson.map((item: any) => ({
+        id: item.id,
+        categoryId: item.categoryId,
+        categoryName: item.categoryName,
+        name: item.name,
+        price: item.price,
+        image: item.image,
+        sales: item.sales || 0,
+        isHot: item.isHot || false,
+        imageVersion: Date.now(),
+      }));
+
+      const stats = await DishSyncService.sync(remoteDishes, {
+        removeNotFound: true,
+        onProgress: (current, total) => {
+          setSyncStatus(`同步中: ${current}/${total}`);
+        },
+      });
+
+      setSyncStatus(
+        `同步完成: 新增 ${stats.created}, 更新 ${stats.updated}, 删除 ${stats.deleted}`,
+      );
+
+      // 重新加载数据
+      await loadDishesFromDatabase();
+
+      // 3秒后清除状态
+      setTimeout(() => setSyncStatus(''), 3000);
+    } catch (error) {
+      console.error('同步失败:', error);
+      setSyncStatus('同步失败');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 更新购物车商品数量
   const updateCartItemQuantity = (id: string, delta: number) => {
-    // 1. 更新购物车
     setCartItems(items =>
       items
         .map(item =>
@@ -266,8 +330,10 @@ export default function OrderScreen() {
         )
         .filter(item => item.quantity > 0),
     );
+  };
 
-    // 2. 同步更新菜品列表中的数量
+  // 更新商品数量
+  const updateProductQuantity = useCallback((id: string, delta: number) => {
     setProducts(prods =>
       prods.map(prod =>
         prod.id === id
@@ -275,88 +341,23 @@ export default function OrderScreen() {
           : prod,
       ),
     );
-  };
-
-  // 整单取消
-  const handleCancelOrder = useCallback(() => {
-    if (cartItems.length === 0) {
-      return;
-    }
-    dialogRef.current?.show({
-      type: 'warning',
-      title: '确认取消',
-      message: '确定要取消整单吗？所有商品将被清空',
-      confirmText: '确定',
-      cancelText: '取消',
-      onConfirm: () => {
-        // 清空购物车
-        setCartItems([]);
-        // 重置所有商品数量
-        setProducts(mockProducts);
-        // 清空备注
-        setNote('');
-      },
-    });
-  }, [cartItems.length]);
-
-  // 打开支付弹窗
-  const handleCheckout = useCallback(() => {
-    if (cartItems.length === 0) {
-      dialogRef.current?.show({
-        type: 'warning',
-        title: '提示',
-        message: '购物车为空，请先添加商品',
-        confirmText: '我知道了',
-      });
-      return;
-    }
-    setShowPaymentModal(true);
-  }, [cartItems.length]);
-
-  // 处理支付
-  const handlePayment = useCallback((method: string) => {
-    setShowPaymentModal(false);
-    // 模拟支付成功
-    setTimeout(() => {
-      dialogRef.current?.show({
-        type: 'success',
-        title: '支付成功',
-        message: `已通过${method}支付 ¥${totalPrice.toFixed(2)}`,
-        confirmText: '确定',
-        onConfirm: () => {
-          // 清空购物车
-          setCartItems([]);
-          // 重置所有商品数量
-          setProducts(mockProducts);
-          // 清空备注
-          setNote('');
-        },
-      });
-    }, 300);
-  }, [totalPrice]);
-
-  // 使用常量定义的列数
-  const numColumns = NUM_COLUMNS;
+  }, []);
 
   // 处理列表滚动 - 根据位置计算当前分类
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      // 如果是通过点击分类触发的滚动，则不处理（防止闪烁）
       if (isScrollingByPress.current) {
         return;
       }
 
       const offsetY = event.nativeEvent.contentOffset.y;
-      // 加上一点缓冲，使分类切换更自然
       const scrollPosition = offsetY + ROW_HEIGHT / 2;
 
       let accumulatedRows = 0;
-      // 默认设置为最后一个分类，这样当滚动到底部时会正确高亮最后一个分类
-      let currentCategory = CATEGORY_CONFIG.length - 1;
+      let currentCategory = categoryConfig.length - 1;
 
-      for (let i = 0; i < CATEGORY_CONFIG.length; i++) {
-        // 计算该分类占用的行数（向上取整）
-        const categoryRows = Math.ceil(CATEGORY_CONFIG[i].count / NUM_COLUMNS);
+      for (let i = 0; i < categoryConfig.length; i++) {
+        const categoryRows = Math.ceil(categoryConfig[i].count / NUM_COLUMNS);
         const categoryEndRows = accumulatedRows + categoryRows;
         const categoryEndPosition = categoryEndRows * ROW_HEIGHT;
 
@@ -367,26 +368,21 @@ export default function OrderScreen() {
         accumulatedRows = categoryEndRows;
       }
 
-      // 只有当分类变化时才更新状态
       if (currentCategory !== selectedCategory) {
         setSelectedCategory(currentCategory);
       }
     },
-    [selectedCategory],
+    [selectedCategory, categoryConfig],
   );
 
   // 点击分类标签 - 滚动到对应位置
   const handleCategoryPress = useCallback((categoryIndex: number) => {
-    // 标记正在程序化滚动，防止 handleScroll 导致分类闪烁
     isScrollingByPress.current = true;
-
-    // 立即设置选中的分类
     setSelectedCategory(categoryIndex);
 
-    // 计算目标分类之前所有分类占用的总行数
     let totalRows = 0;
     for (let i = 0; i < categoryIndex; i++) {
-      totalRows += Math.ceil(CATEGORY_CONFIG[i].count / NUM_COLUMNS);
+      totalRows += Math.ceil(categoryConfig[i].count / NUM_COLUMNS);
     }
     const targetOffset = totalRows * ROW_HEIGHT;
 
@@ -395,11 +391,16 @@ export default function OrderScreen() {
       animated: true,
     });
 
-    // 滚动动画结束后恢复滚动监听（动画大约 300-500ms）
     setTimeout(() => {
       isScrollingByPress.current = false;
     }, 500);
-  }, []);
+  }, [categoryConfig]);
+
+  // 根据分类筛选产品
+  const filteredProducts =
+    selectedCategory === 0
+      ? products
+      : products.filter(p => p.categoryId === categoryConfig[selectedCategory]?.id);
 
   return (
     <View style={styles.container}>
@@ -460,16 +461,35 @@ export default function OrderScreen() {
               </TouchableOpacity>
             </View>
           </View>
+          {/* 数据同步按钮 */}
+          <TouchableOpacity
+            style={styles.syncButton}
+            onPress={syncFromRemote}
+            disabled={isLoading}
+          >
+            <Text style={styles.syncButtonText}>
+              {isLoading ? '同步中...' : '同步数据'}
+            </Text>
+          </TouchableOpacity>
+          {syncStatus ? (
+            <Text style={styles.syncStatus}>{syncStatus}</Text>
+          ) : null}
           {/* 列表表头 */}
           <View style={styles.cartListHeader}>
             <Text style={styles.cartListHeaderText}>商品名称</Text>
             <Text
-              style={[styles.cartListHeaderText, styles.cartListHeaderQuantity]}
+              style={[
+                styles.cartListHeaderText,
+                styles.cartListHeaderQuantity,
+              ]}
             >
               数量
             </Text>
             <Text
-              style={[styles.cartListHeaderText, styles.cartListHeaderPrice]}
+              style={[
+                styles.cartListHeaderText,
+                styles.cartListHeaderPrice,
+              ]}
             >
               小计
             </Text>
@@ -520,25 +540,25 @@ export default function OrderScreen() {
                   <Text style={styles.quantityButtonPlusText}>＋</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={styles.cartItemPrice}>¥{item.price.toFixed(2)}</Text>
+              <Text style={styles.cartItemPrice}>
+                ¥{item.price.toFixed(2)}
+              </Text>
             </View>
           ))}
 
-          {/* 备注区域 - 只有购物车有数据时才显示 */}
-          {cartItems.length > 0 && (
-            <View style={styles.noteSection}>
-              <TextInput
-                style={styles.noteInput}
-                placeholder="备注信息..."
-                placeholderTextColor={COLORS.gray400}
-                value={note}
-                onChangeText={setNote}
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-              />
-            </View>
-          )}
+          {/* 备注区域 */}
+          <View style={styles.noteSection}>
+            <TextInput
+              style={styles.noteInput}
+              placeholder="备注信息..."
+              placeholderTextColor={COLORS.gray400}
+              value={note}
+              onChangeText={setNote}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
+          </View>
         </ScrollView>
 
         {/* 底部结算区域 */}
@@ -558,11 +578,11 @@ export default function OrderScreen() {
             </View>
           </View>
           <View style={styles.cartActions}>
-            <TouchableOpacity style={styles.cancelButton} onPress={handleCancelOrder}>
+            <TouchableOpacity style={styles.cancelButton}>
               <Text style={styles.cancelButtonIcon}>🗑</Text>
               <Text style={styles.cancelButtonText}>整单取消</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.checkoutButton} onPress={handleCheckout}>
+            <TouchableOpacity style={styles.checkoutButton}>
               <Text style={styles.checkoutButtonText}>
                 结账 ¥{totalPrice.toFixed(1)}
               </Text>
@@ -628,103 +648,45 @@ export default function OrderScreen() {
           ))}
         </ScrollView>
 
-        {/* 商品网格 - 使用 FlashList 实现虚拟化 */}
+        {/* 商品网格 */}
         <View style={styles.productsContainer}>
-          <FlashList
-            ref={flashListRef}
-            data={products}
-            renderItem={({ item, index }) => (
-              <ProductCard
-                product={item}
-                numColumns={numColumns}
-                onQuantityChange={updateProductQuantity}
-                index={index}
-                leftPanelWidth={LEFT_PANEL_WIDTH}
-              />
-            )}
-            keyExtractor={item => item.id}
-            // @ts-expect-error - FlashList 特有的 estimatedItemSize 属性
-            estimatedItemSize={ITEM_ESTIMATED_SIZE}
-            numColumns={numColumns}
-            contentContainerStyle={styles.productsContent}
-            showsVerticalScrollIndicator={false}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            // 列间距（行与行之间的垂直间距）
-            ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-            // iPad 优化：减少同时渲染的内容，降低内存占用
-            windowSize={7}
-            // 每次渲染 10 个项目，平衡性能和流畅度
-            maxToRenderPerBatch={10}
-            // 滚动到可见区域的初始渲染数量
-            initialNumToRender={12}
-            // 视口外的项目不活跃，保持性能
-            removeClippedSubviews
-            // iOS 风格滚动优化：自然减速效果
-            decelerationRate="normal"
-            // 启用弹性滚动（iOS bounce 效果）
-            bounces={true}
-            // Android 过度滚动模式
-            overScrollMode="always"
-          />
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={COLORS.primary} />
+              <Text style={styles.loadingText}>{syncStatus}</Text>
+            </View>
+          ) : (
+            <FlashList
+              ref={flashListRef}
+              data={filteredProducts}
+              renderItem={({ item, index }) => (
+                <ProductCard
+                  product={item}
+                  numColumns={NUM_COLUMNS}
+                  onQuantityChange={updateProductQuantity}
+                  index={index}
+                  leftPanelWidth={LEFT_PANEL_WIDTH}
+                />
+              )}
+              keyExtractor={item => item.id}
+              estimatedItemSize={ITEM_ESTIMATED_SIZE}
+              numColumns={NUM_COLUMNS}
+              contentContainerStyle={styles.productsContent}
+              showsVerticalScrollIndicator={false}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+              windowSize={7}
+              maxToRenderPerBatch={10}
+              initialNumToRender={12}
+              removeClippedSubviews
+              decelerationRate="normal"
+              bounces={true}
+              overScrollMode="always"
+            />
+          )}
         </View>
       </View>
-
-      {/* 支付弹窗 */}
-      <Modal
-        visible={showPaymentModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowPaymentModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.paymentModal}>
-            <View style={styles.paymentHeader}>
-              <Text style={styles.paymentTitle}>选择支付方式</Text>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setShowPaymentModal(false)}
-              >
-                <Text style={styles.closeButtonText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.paymentAmount}>
-              <Text style={styles.paymentAmountLabel}>应付金额</Text>
-              <Text style={styles.paymentAmountValue}>¥ {totalPrice.toFixed(2)}</Text>
-            </View>
-
-            <View style={styles.paymentMethods}>
-              <TouchableOpacity
-                style={styles.paymentMethodButton}
-                onPress={() => handlePayment('微信')}
-              >
-                <Text style={styles.paymentMethodIcon}>💬</Text>
-                <Text style={styles.paymentMethodText}>微信支付</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.paymentMethodButton}
-                onPress={() => handlePayment('支付宝')}
-              >
-                <Text style={styles.paymentMethodIcon}>📱</Text>
-                <Text style={styles.paymentMethodText}>支付宝</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.paymentMethodButton}
-                onPress={() => handlePayment('现金')}
-              >
-                <Text style={styles.paymentMethodIcon}>💵</Text>
-                <Text style={styles.paymentMethodText}>现金</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* 自定义对话框 */}
-      <Dialog ref={dialogRef} />
     </View>
   );
 }
@@ -789,6 +751,25 @@ const styles = StyleSheet.create({
   },
   diningTypeTextActive: {
     color: COLORS.gray900,
+  },
+  syncButton: {
+    backgroundColor: COLORS.blue500,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  syncButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.white,
+  },
+  syncStatus: {
+    fontSize: 10,
+    color: COLORS.gray500,
+    textAlign: 'center',
+    marginBottom: 8,
   },
   cartListHeader: {
     flexDirection: 'row',
@@ -1095,94 +1076,19 @@ const styles = StyleSheet.create({
   // 商品网格容器
   productsContainer: {
     flex: 1,
-    paddingRight:12,
+    paddingRight: 12,
   },
   productsContent: {
-    // paddingHorizontal: 24,
     paddingTop: 12,
-    // paddingBottom: 24,
   },
-
-  // ==================== 支付弹窗样式 ====================
-  modalOverlay: {
+  loadingContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  paymentModal: {
-    width: 400,
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 20,
-  },
-  paymentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray100,
-  },
-  paymentTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.gray900,
-  },
-  closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.gray100,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    fontSize: 16,
-    color: COLORS.gray500,
-    fontWeight: '500',
-  },
-  paymentAmount: {
-    alignItems: 'center',
-    paddingVertical: 24,
-    backgroundColor: COLORS.gray50,
-  },
-  paymentAmountLabel: {
-    fontSize: 14,
-    color: COLORS.gray500,
-    marginBottom: 8,
-  },
-  paymentAmountValue: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  paymentMethods: {
-    padding: 24,
     gap: 12,
   },
-  paymentMethodButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: COLORS.gray50,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.gray200,
-  },
-  paymentMethodIcon: {
-    fontSize: 24,
-    marginRight: 16,
-  },
-  paymentMethodText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.gray900,
+  loadingText: {
+    fontSize: 14,
+    color: COLORS.gray600,
   },
 });

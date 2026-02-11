@@ -87,13 +87,14 @@ elif [ "$BUILD_TYPE" = "debug" ]; then
 else
     echo -e "${YELLOW}  Release 模式：使用 Re.Pack webpack (支持远程代码分割)${NC}"
     # 使用 Re.Pack 的 webpack-bundle 命令构建主包和远程分包
-    # 远程分包会输出到 build/output/android/remote/ 目录
+    echo -e "${YELLOW}  Release 模式：使用 Re.Pack Rspack 打包（支持代码分割）${NC}"
     NODE_ENV=production npx react-native webpack-bundle \
         --entry-file index.js \
         --platform android \
         --dev false \
         --bundle-output android/app/build/generated/assets/react/release/index.android.bundle \
-        --assets-dest android/app/src/main/res
+        --assets-dest android/app/src/main/res \
+        --config rspack.config.mjs
 fi
 
 # Step 3: 显示打包结果

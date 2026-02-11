@@ -19,6 +19,7 @@ const FILES_TO_UPDATE = [
   'README.md',
   'TEMPLATE_GUIDE.md',
   'scripts/build-android.sh',
+  'scripts/build-android-repack.sh',
   'ios/Podfile',
   'ios/NativeRouter.xcodeproj/project.pbxproj',
   'ios/NativeRouter.xcodeproj/xcshareddata/xcschemes/NativeRouter.xcscheme',
