@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,11 @@ import {
   SafeAreaView,
   StatusBar,
   Dimensions,
+  Modal,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../../navigation/RootNavigator';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const { width, height } = Dimensions.get('window');
@@ -233,25 +237,120 @@ const StatItem: React.FC<{
   label: string;
   count: number;
   isLast?: boolean;
-}> = ({ color, label, count, isLast }) => {
+  onPress?: () => void;
+}> = ({ color, label, count, isLast, onPress }) => {
+  const [isPressed, setIsPressed] = useState(false);
+
+  if (!onPress) {
+    return (
+      <View
+        style={[
+          styles.statItem,
+          !isLast && styles.statItemBorder,
+        ]}
+      >
+        <View style={[styles.statDot, { backgroundColor: color }]} />
+        <Text style={styles.statText}>
+          {label}: {count}
+        </Text>
+      </View>
+    );
+  }
+
   return (
-    <View
+    <TouchableOpacity
       style={[
         styles.statItem,
         !isLast && styles.statItemBorder,
+        isPressed && styles.statItemPressed,
       ]}
+      onPress={onPress}
+      onPressIn={() => setIsPressed(true)}
+      onPressOut={() => setIsPressed(false)}
+      activeOpacity={1}
     >
       <View style={[styles.statDot, { backgroundColor: color }]} />
-      <Text style={styles.statText}>
+      <Text style={[styles.statText, isPressed && styles.statTextPressed]}>
         {label}: {count}
       </Text>
-    </View>
+    </TouchableOpacity>
   );
 };
 
+// 桌台操作弹窗组件
+interface TableOperationModalProps {
+  visible: boolean;
+  onClose: () => void;
+  onOperation: (operation: string) => void;
+}
+
+const TableOperationModal: React.FC<TableOperationModalProps> = ({
+  visible,
+  onClose,
+  onOperation,
+}) => {
+  const operations = [
+    { id: 'order', label: '打开订单', icon: 'restaurant-menu' },
+    { id: 'payment', label: '收银结账', icon: 'payments' },
+    { id: 'clear', label: '清台', icon: 'cleaning-services' },
+    { id: 'merge', label: '合并桌台', icon: 'merge' },
+    { id: 'split', label: '拆分桌台', icon: 'call-split' },
+    { id: 'move', label: '转移桌台', icon: 'subdirectory-arrow-right' },
+  ];
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <TouchableOpacity
+        style={styles.modalOverlay}
+        activeOpacity={1}
+        onPress={onClose}
+      >
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>桌台操作</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Icon name="close" size={24} color={colors.slate[600]} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView
+            style={styles.modalBody}
+            contentContainerStyle={styles.operationGrid}
+          >
+            {operations.map((op) => (
+              <TouchableOpacity
+                key={op.id}
+                style={styles.operationButton}
+                onPress={() => {
+                  onOperation(op.id);
+                  onClose();
+                }}
+              >
+                <View style={styles.operationIconContainer}>
+                  <Icon name={op.icon} size={28} color={colors.primary} />
+                </View>
+                <Text style={styles.operationLabel}>{op.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      </TouchableOpacity>
+    </Modal>
+  );
+};
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
 const TableScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp>();
   const [activeTab, setActiveTab] = useState<'all' | 'hall' | 'room'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showOperationModal, setShowOperationModal] = useState(false);
 
   // 统计数据
   const stats = {
@@ -270,14 +369,49 @@ const TableScreen: React.FC = () => {
     people: 16,
   };
 
+  // 根据分类过滤表格
+  const filteredTables = useMemo(() => {
+    let filtered = tables;
+
+    if (activeTab === 'hall') {
+      filtered = filtered.filter(t => t.name.startsWith('大厅'));
+    } else if (activeTab === 'room') {
+      filtered = filtered.filter(t => !t.name.startsWith('大厅'));
+    }
+
+    if (searchQuery) {
+      filtered = filtered.filter(t =>
+        t.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    return filtered;
+  }, [activeTab, searchQuery]);
+
+  const handleBackToHome = () => {
+    navigation.goBack();
+  };
+
+  const handleTableOperation = (operation: string) => {
+    console.log('Table operation:', operation);
+    // 这里可以添加具体的操作逻辑
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.slate[100]} />
 
+      {/* Modal for table operations */}
+      <TableOperationModal
+        visible={showOperationModal}
+        onClose={() => setShowOperationModal(false)}
+        onOperation={handleTableOperation}
+      />
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity style={styles.backButton}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBackToHome}>
             <Icon name="arrow-back" size={20} color={colors.slate[600]} />
             <Text style={styles.backButtonText}>返回首页</Text>
           </TouchableOpacity>
@@ -333,7 +467,10 @@ const TableScreen: React.FC = () => {
             <Text style={styles.unpaidStat}>{unpaidInfo.people}人</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => setShowOperationModal(true)}
+        >
           <Text style={styles.actionButtonText}>桌台操作</Text>
           <Icon name="expand-more" size={18} color={colors.slate[700]} />
         </TouchableOpacity>
@@ -372,7 +509,7 @@ const TableScreen: React.FC = () => {
       {/* Table Grid */}
       <ScrollView style={styles.mainContent} contentContainerStyle={styles.gridContainer}>
         <View style={styles.tableGrid}>
-          {tables.map((table) => (
+          {filteredTables.map((table) => (
             <TableCard key={table.id} table={table} />
           ))}
         </View>
@@ -719,6 +856,13 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     borderRightColor: colors.slate[100],
   },
+  statItemPressed: {
+    backgroundColor: colors.slate[100],
+  },
+  statTextPressed: {
+    color: colors.slate[900],
+    fontWeight: '600',
+  },
   statDot: {
     width: 12,
     height: 12,
@@ -732,6 +876,78 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: colors.slate[900],
+  },
+
+  // Modal 样式
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: colors.slate[50],
+    borderRadius: 20,
+    width: '70%',
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.slate[200],
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.slate[900],
+  },
+  modalBody: {
+    padding: 16,
+  },
+  operationGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  operationButton: {
+    width: '48%',
+    paddingVertical: 20,
+    paddingHorizontal: 12,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.slate[200],
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  operationIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(134, 239, 172, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  operationLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.slate[700],
+    textAlign: 'center',
   },
 });
 
