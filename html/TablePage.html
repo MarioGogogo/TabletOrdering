@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>桌台管理界面</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#86efac",
+                        "background-light": "#f3f4f6",
+                        "background-dark": "#111827",
+                        "card-empty": "#e5e7eb",
+                        "status-red": "#fca5a5",
+                        "status-blue": "#93c5fd",
+                        "status-green": "#86efac",
+                        "status-orange": "#fdba74",
+                    },
+                    fontFamily: {
+                        display: ["Inter", "PingFang SC", "Microsoft YaHei", "sans-serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.75rem",
+                    },
+                },
+            },
+        };
+    </script>
+<style type="text/tailwindcss">
+        body {
+            font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            min-height: max(884px, 100dvh);
+        }
+        .table-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+        }
+        @media (min-width: 1024px) {
+            .table-grid {
+                grid-template-columns: repeat(8, 1fr);
+            }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
+<header class="bg-white dark:bg-slate-900 px-4 py-3 flex items-center justify-between shadow-sm sticky top-0 z-10">
+<div class="flex items-center gap-4">
+<button class="flex items-center text-slate-600 dark:text-slate-400 font-medium">
+<span class="material-symbols-outlined mr-1">arrow_back</span>
+                返回首页
+            </button>
+</div>
+<div class="flex-1 max-w-xl mx-8 flex gap-2">
+<div class="relative flex-1">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-none rounded-full focus:ring-2 focus:ring-primary text-sm" placeholder="桌台名称查询" type="text"/>
+</div>
+<button class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-full text-sm font-medium hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">重置</button>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4 text-slate-500 dark:text-slate-400">
+<div class="relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
+</div>
+<span class="material-symbols-outlined">wifi</span>
+<div class="text-right leading-tight">
+<div class="text-sm font-bold text-slate-800 dark:text-slate-200">15:34</div>
+<div class="text-[10px]">11-05 星期二</div>
+</div>
+</div>
+<div class="h-8 w-px bg-slate-200 dark:bg-slate-700"></div>
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center overflow-hidden">
+<span class="material-symbols-outlined text-slate-500">person</span>
+</div>
+<span class="text-sm font-medium">admin</span>
+</div>
+</div>
+</header>
+<div class="px-6 py-4 flex justify-between items-center">
+<div class="flex items-center gap-6 text-sm">
+<span class="text-slate-500 dark:text-slate-400">未结账信息:</span>
+<div class="flex gap-4 font-semibold">
+<span>2桌</span>
+<span class="text-slate-300 dark:text-slate-600">|</span>
+<span>¥6000</span>
+<span class="text-slate-300 dark:text-slate-600">|</span>
+<span>16人</span>
+</div>
+</div>
+<button class="flex items-center gap-2 px-4 py-2 bg-slate-200 dark:bg-slate-800 rounded-lg text-sm font-medium hover:bg-slate-300 transition-colors">
+            桌台操作
+            <span class="material-symbols-outlined text-[18px]">expand_more</span>
+</button>
+</div>
+<div class="px-6 pb-4">
+<div class="inline-flex p-1 bg-slate-200 dark:bg-slate-800 rounded-xl">
+<button class="px-6 py-2 bg-primary text-slate-900 rounded-lg font-bold text-sm shadow-sm transition-all">全部 12</button>
+<button class="px-6 py-2 text-slate-600 dark:text-slate-400 font-medium text-sm hover:text-slate-900 dark:hover:text-slate-200">大厅 7</button>
+<button class="px-6 py-2 text-slate-600 dark:text-slate-400 font-medium text-sm hover:text-slate-900 dark:hover:text-slate-200">包间 5</button>
+</div>
+</div>
+<main class="flex-1 px-6 pb-24">
+<div class="table-grid">
+<div class="bg-white dark:bg-slate-800 rounded-2xl p-3 h-32 flex flex-col justify-between shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden relative">
+<div>
+<div class="text-sm font-bold opacity-60">大厅1</div>
+</div>
+<div class="h-8 bg-slate-100 dark:bg-slate-700/50 rounded-lg -mx-1 mb-[-4px] flex items-center px-3 justify-between">
+<div class="flex items-center gap-1 text-[10px] opacity-40">
+<span class="material-symbols-outlined text-[12px]">person</span>
+                        4人
+                    </div>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-800 rounded-2xl p-3 h-32 flex flex-col justify-between shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden relative">
+<div>
+<div class="text-sm font-bold opacity-60">大厅2</div>
+</div>
+<div class="h-8 bg-slate-100 dark:bg-slate-700/50 rounded-lg -mx-1 mb-[-4px] flex items-center px-3 justify-between">
+<div class="flex items-center gap-1 text-[10px] opacity-40">
+<span class="material-symbols-outlined text-[12px]">person</span>
+                        4人
+                    </div>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-800 rounded-2xl p-3 h-32 flex flex-col justify-between shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden relative">
+<div>
+<div class="text-sm font-bold opacity-60">大厅3</div>
+</div>
+<div class="h-8 bg-slate-100 dark:bg-slate-700/50 rounded-lg -mx-1 mb-[-4px] flex items-center px-3 justify-between">
+<div class="flex items-center gap-1 text-[10px] opacity-40">
+<span class="material-symbols-outlined text-[12px]">person</span>
+                        4人
+                    </div>
+</div>
+</div>
+<div class="bg-status-red text-red-900 rounded-2xl p-3 h-32 flex flex-col justify-between shadow-md overflow-hidden relative">
+<div>
+<div class="text-sm font-bold">大厅4</div>
+<div class="text-[10px] mt-1 font-medium">待结账</div>
+</div>
+<div class="h-8 bg-red-950/10 rounded-lg -mx-1 mb-[-4px] flex items-center px-3 justify-between">
+<div class="flex items-center gap-1 text-[10px] font-medium">
+<span class="material-symbols-outlined text-[12px]">person</span>
+                        8/10人
+                    </div>
+<div class="flex items-center gap-1 text-[10px] font-medium">
+<span class="material-symbols-outlined text-[12px]">schedule</span>
+                        120分钟
+                    </div>
+</div>
+</div>
+<div class="bg-status-red text-red-900 rounded-2xl p-3 h-32 flex flex-col justify-between shadow-md overflow-hidden relative">
+<div>
+<div class="text-sm font-bold">大厅5</div>
+<div class="text-[10px] mt-1 font-medium">待结账</div>
+</div>
+<div class="h-8 bg-red-950/10 rounded-lg -mx-1 mb-[-4px] flex items-center px-3 justify-between">
+<div class="flex items-center gap-1 text-[10px] font-medium">
+<span class="material-symbols-outlined text-[12px]">person</span>
+                        8/10人
+                    </div>
+<div class="flex items-center gap-1 text-[10px] font-medium">
+<span class="material-symbols-outlined text-[12px]">schedule</span>
+                        120分钟
+                    </div>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-800 rounded-2xl p-3 h-32 flex flex-col justify-between shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden relative">
+<div>
+<div class="text-sm font-bold opacity-60">大厅6</div>
+</div>
+<div class="h-8 bg-slate-100 dark:bg-slate-700/50 rounded-lg -mx-1 mb-[-4px] flex items-center px-3 justify-between">
+<div class="flex items-center gap-1 text-[10px] opacity-40">
+<span class="material-symbols-outlined text-[12px]">person</span>
+                        4人
+                    </div>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-800 rounded-2xl p-3 h-32 flex flex-col justify-between shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden relative">
+<div>
+<div class="text-sm font-bold opacity-60">大厅7</div>
+</div>
+<div class="h-8 bg-slate-100 dark:bg-slate-700/50 rounded-lg -mx-1 mb-[-4px] flex items-center px-3 justify-between">
+<div class="flex items-center gap-1 text-[10px] opacity-40">
+<span class="material-symbols-outlined text-[12px]">person</span>
+                        4人
+                    </div>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-800 rounded-2xl p-3 h-32 flex flex-col justify-between shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden relative">
+<div>
+<div class="text-sm font-bold opacity-60">大厅8</div>
+</div>
+<div class="h-8 bg-slate-100 dark:bg-slate-700/50 rounded-lg -mx-1 mb-[-4px] flex items-center px-3 justify-between">
+<div class="flex items-center gap-1 text-[10px] opacity-40">
+<span class="material-symbols-outlined text-[12px]">person</span>
+                        4人
+                    </div>
+</div>
+</div>
+<div class="bg-status-blue text-blue-900 rounded-2xl p-3 h-32 flex flex-col justify-between shadow-md overflow-hidden relative">
+<div>
+<div class="flex justify-between items-start">
+<div class="text-sm font-bold">华山厅</div>
+<span class="bg-white/40 text-[9px] px-1.5 py-0.5 rounded">查看备注</span>
+</div>
+<div class="text-[10px] mt-1 font-medium">已预结</div>
+</div>
+<div class="h-8 bg-blue-950/10 rounded-lg -mx-1 mb-[-4px] flex items-center px-3 justify-between">
+<div class="flex items-center gap-1 text-[10px] font-medium">
+<span class="material-symbols-outlined text-[12px]">person</span>
+                        8/10人
+                    </div>
+<div class="flex items-center gap-1 text-[10px] font-medium">
+<span class="material-symbols-outlined text-[12px]">schedule</span>
+                        120分钟
+                    </div>
+</div>
+</div>
+<div class="bg-status-green text-emerald-900 rounded-2xl p-3 h-32 flex flex-col justify-between shadow-md overflow-hidden relative">
+<div>
+<div class="text-sm font-bold">泰山厅</div>
+<div class="text-[10px] mt-1 font-medium">待清台</div>
+</div>
+<div class="h-8 bg-emerald-950/10 rounded-lg -mx-1 mb-[-4px] flex items-center px-3 justify-between">
+<div class="flex items-center gap-1 text-[10px] font-medium">
+<span class="material-symbols-outlined text-[12px]">person</span>
+                        8/10人
+                    </div>
+<div class="flex items-center gap-1 text-[10px] font-medium">
+<span class="material-symbols-outlined text-[12px]">schedule</span>
+                        120分钟
+                    </div>
+</div>
+</div>
+<div class="bg-white dark:bg-slate-800 rounded-2xl p-3 h-32 flex flex-col justify-between shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden relative">
+<div>
+<div class="text-sm font-bold opacity-60">黄山厅</div>
+</div>
+<div class="h-8 bg-slate-100 dark:bg-slate-700/50 rounded-lg -mx-1 mb-[-4px] flex items-center px-3 justify-between">
+<div class="flex items-center gap-1 text-[10px] opacity-40">
+<span class="material-symbols-outlined text-[12px]">person</span>
+                        10人
+                    </div>
+</div>
+</div>
+<div class="bg-status-orange text-orange-900 rounded-2xl p-3 h-32 flex flex-col justify-between shadow-md overflow-hidden relative">
+<div>
+<div class="text-sm font-bold">嵩山厅</div>
+<div class="text-[10px] mt-1 font-medium">待下单</div>
+</div>
+<div class="h-8 bg-orange-950/10 rounded-lg -mx-1 mb-[-4px] flex items-center px-3 justify-between">
+<div class="flex items-center gap-1 text-[10px] font-medium">
+<span class="material-symbols-outlined text-[12px]">person</span>
+                        8/10人
+                    </div>
+<div class="flex items-center gap-1 text-[10px] font-medium">
+<span class="material-symbols-outlined text-[12px]">schedule</span>
+                        120分钟
+                    </div>
+</div>
+</div>
+</div>
+</main>
+<footer class="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 h-16 flex overflow-x-auto items-stretch">
+<div class="flex-1 min-w-[120px] flex items-center justify-center border-r border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+<span class="text-sm font-bold">全部: 12</span>
+</div>
+<div class="flex-1 min-w-[120px] flex items-center justify-center gap-2 border-r border-slate-100 dark:border-slate-800">
+<span class="w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600"></span>
+<span class="text-sm text-slate-600 dark:text-slate-400">空桌台: 10</span>
+</div>
+<div class="flex-1 min-w-[120px] flex items-center justify-center gap-2 border-r border-slate-100 dark:border-slate-800">
+<span class="w-3 h-3 rounded-full bg-status-orange"></span>
+<span class="text-sm text-slate-600 dark:text-slate-400">待下单: 1</span>
+</div>
+<div class="flex-1 min-w-[120px] flex items-center justify-center gap-2 border-r border-slate-100 dark:border-slate-800">
+<span class="w-3 h-3 rounded-full bg-status-red"></span>
+<span class="text-sm text-slate-600 dark:text-slate-400">待结账: 1</span>
+</div>
+<div class="flex-1 min-w-[120px] flex items-center justify-center gap-2 border-r border-slate-100 dark:border-slate-800">
+<span class="w-3 h-3 rounded-full bg-status-blue"></span>
+<span class="text-sm text-slate-600 dark:text-slate-400">已预结: 1</span>
+</div>
+<div class="flex-1 min-w-[120px] flex items-center justify-center gap-2">
+<span class="w-3 h-3 rounded-full bg-status-green"></span>
+<span class="text-sm text-slate-600 dark:text-slate-400">待清台: 1</span>
+</div>
+</footer>
+
+</body></html>

@@ -59,9 +59,9 @@ src/
 │   ├── HomeScreen.tsx           # 门店看板 + 侧边栏导航（Bento Box 布局）
 │   ├── DashboardScreen.tsx      # 数据展示仪表板
 │   ├── OrderScreenWithDB.tsx    # 点单页面（WatermelonDB 集成）
-│   ├── TableScreen.tsx          # 桌台管理（分包加载）
-│   ├── OrdersScreen.tsx         # 订单管理列表
-│   ├── MemberScreen.tsx         # 会员管理系统
+│   ├── TableScreen.tsx          # 桌台管理（条件加载：开发静态/生产分包）
+│   ├── OrdersScreen.tsx         # 订单管理列表（条件加载：开发静态/生产分包）
+│   ├── MemberScreen.tsx         # 会员管理系统（静态导入）
 │   ├── RecommendScreen.tsx      # 推荐页面
 │   ├── ErrorScreen.tsx          # 错误提示页
 │   └── ...
@@ -128,16 +128,30 @@ src/
 
 **分包配置** (index.js):
 
-| 分包名称 | 关联屏幕 | 加载方式 | 大小 |
-|---------|---------|--------|------|
+| 分包名称 | 关联屏幕 | 加载方式 | 说明 |
+|---------|---------|---------|------|
 | **main** | 其他屏幕 | 主包 | ~ 2.5MB |
-| **table** | TableScreen | 动态导入 + lazy | ~ 150KB |
+| **table** | TableScreen | 条件加载 | 开发静态/生产分包 |
+| **orders** | OrdersScreen | 条件加载 | 开发静态/生产分包 |
+
+**加载策略** (HomeScreen.tsx):
+```typescript
+// 开发模式：使用 require() 直接静态导入（避免 DevServer chunk 加载问题）
+if (__DEV__) {
+  TableScreen = require('./TableScreen').default;
+  OrdersScreen = require('./OrdersScreen').default;
+} else {
+  // 生产模式：分包懒加载
+  TableScreen = lazy(() => import(/* webpackChunkName: "table" */ './TableScreen'));
+  OrdersScreen = lazy(() => import(/* webpackChunkName: "orders" */ './OrdersScreen'));
+}
+```
 
 **版本管理流程**:
 ```
 1. 开发环境 (__DEV__ = true):
-   分包从本地 DevServer 加载 → http://localhost:8081/{scriptId}.chunk.bundle
-   支持热更新
+   - TableScreen/OrdersScreen 使用静态导入，无 chunk 加载
+   - 其他分包从本地 DevServer 加载 → http://localhost:8081/{scriptId}.chunk.bundle
 
 2. 生产环境 (__DEV__ = false):
    获取分包配置 → BundleConfigService.fetchBundleConfigWithRetry()
@@ -197,8 +211,8 @@ npm run android           # 在另一个终端运行应用
 ```
 
 **特点**:
-- 代码变更自动热更新
-- 分包从本地 DevServer 加载（支持热更新）
+- 侧边栏页面（桌台、订单）使用静态导入，无 chunk 加载延迟
+- 分包页面从本地 DevServer 加载（支持热更新）
 - 支持远程调试（Chrome DevTools）
 
 ### 2. 修改菜品数据和测试同步
@@ -222,7 +236,16 @@ BundleConfigService.fetchBundleConfigWithRetry()
 **步骤**:
 1. 在 `src/screens/NewScreen.tsx` 创建新屏幕
 2. 在 `src/navigation/RootNavigator.tsx` 添加导航路由
-3. 如需分包：使用 `React.lazy()` 包装，配置 `webpackChunkName`
+3. 如需条件加载（在 HomeScreen 中使用）：
+   ```typescript
+   // 开发静态导入，生产分包加载
+   let NewScreen: React.ComponentType<any>;
+   if (__DEV__) {
+     NewScreen = require('./NewScreen').default;
+   } else {
+     NewScreen = lazy(() => import(/* webpackChunkName: "new" */ './NewScreen'));
+   }
+   ```
 4. 在 `index.js` 的 `remoteBundleConfig` 添加分包配置
 5. 在 `rspack.config.mjs` 确保分包文件被正确输出到 `build/output/android/remote/`
 
@@ -397,6 +420,21 @@ npx prettier --write src/
 5. 重新构建和测试
 
 ### 场景 3: 修复分包加载失败
+
+**常见错误**：`Error: Loading chunk table failed`
+
+**排查步骤**:
+1. 检查开发服务器是否运行：`npm start`
+2. 查看控制台日志确认 URL：
+   ```
+   [ScriptManager] Resolving: table, DEV: true
+   [ScriptManager] DevServer URL: http://localhost:8081/table.chunk.bundle
+   ```
+3. 如果是 HomeScreen 中的页面，确认已使用条件加载模式
+
+**解决方案**:
+- 开发模式：使用 `require()` 直接静态导入
+- 生产模式：检查远程服务器 URL 和版本配置
 
 使用 `ChunkErrorBoundary` 的 error log 查看具体错误：
 - 网络错误 → 检查 URL 和网络连接

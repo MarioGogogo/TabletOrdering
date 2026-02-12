@@ -25,16 +25,24 @@ import DashboardScreen from './DashboardScreen';
 import MemberScreen from './MemberScreen';
 import OrderScreen from './OrderScreen';
 
-// 动态导入 - 分包加载
-// webpackChunkName 指定打包后的 chunk 名称
-// __DEV__ 为 true 时预加载（开发环境直接加载），为 false 时懒加载（生产环境）
-const TableScreen = lazy(() =>
-  import(/* webpackChunkName: "table" */ './TableScreen')
-);
+// 开发模式：直接静态导入（避免分包加载问题）
+// 生产模式：分包懒加载
+let TableScreen: React.ComponentType<any>;
+let OrdersScreen: React.ComponentType<any>;
 
-const OrdersScreen = lazy(() =>
-  import(/* webpackChunkName: "orders" */ './OrdersScreen')
-);
+if (__DEV__) {
+  // 开发模式：静态导入
+  TableScreen = require('./TableScreen').default;
+  OrdersScreen = require('./OrdersScreen').default;
+} else {
+  // 生产模式：动态导入
+  TableScreen = lazy(() =>
+    import(/* webpackChunkName: "table" */ './TableScreen')
+  );
+  OrdersScreen = lazy(() =>
+    import(/* webpackChunkName: "orders" */ './OrdersScreen')
+  );
+}
 
 // 加载占位符组件
 const ChunkLoader = () => (
@@ -43,12 +51,6 @@ const ChunkLoader = () => (
     <Text style={styles.loadingText}>加载中...</Text>
   </View>
 );
-
-// 开发环境：预加载分包模块，避免切换时的加载延迟
-if (__DEV__) {
-  import('./TableScreen').catch(console.error);
-  import('./OrdersScreen').catch(console.error);
-}
 
 // 常量
 const SIDEBAR_WIDTH = 88;
@@ -87,7 +89,6 @@ export default function HomeScreen() {
           <ChunkErrorBoundary
             onGoBack={() => setActivePage('Home')}
             onRetry={() => {
-              // 重置状态重新加载
               setActivePage('Home');
               setTimeout(() => setActivePage('Table'), 100);
             }}

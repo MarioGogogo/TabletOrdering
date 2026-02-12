@@ -13,11 +13,14 @@ import { useAppStore } from '../store/useAppStore';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 // 登录页面
-import LoginScreen from '../screens/LoginScreen';
+import NLoginScreen from '../screens/NLoginScreen';
+import HomeV2Screen from '../screens/V2/HomeScreen';
 // 首页（门店看板）
 import HomeScreen from '../screens/HomeScreen';
 // 点单页面（使用 WatermelonDB 版本）
 import OrderScreen from '../screens/OrderScreenWithDB';
+// 桌台页面
+import TableScreen from '../screens/V2/TableScreen';
 
 // 分包懒加载
 const OrdersScreen = React.lazy(
@@ -43,6 +46,7 @@ export type RootStackParamList = {
   Home: undefined;
   Order: undefined;
   Orders: undefined;
+  Table: undefined;
   BundleError: { bundleName: string };
 };
 
@@ -157,7 +161,7 @@ export default function RootNavigator() {
         {/* 登录页面（起始页） */}
         <Stack.Screen
           name="Login"
-          component={LoginScreen}
+          component={HomeV2Screen}
           options={{
             headerShown: false,
           }}
@@ -190,6 +194,14 @@ export default function RootNavigator() {
           }}
         />
 
+        {/* 桌台页面 */}
+        <Stack.Screen
+          name="Table"
+          component={TableScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
 
         {/* 分包错误页面 */}
         <Stack.Screen name="BundleError" component={BundleErrorScreen} />

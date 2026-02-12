@@ -147,6 +147,8 @@ ScriptManager.shared.addResolver(async scriptId => {
 
   // 开发模式：从 DevServer 加载所有分包
   if (__DEV__) {
+    // Re.Pack 开发模式下，chunk URL 格式应该是：
+    // http://localhost:8081/{scriptId}.chunk.bundle
     const devUrl = Script.getDevServerURL(scriptId);
     console.log(`[ScriptManager] DevServer URL: ${devUrl}`);
     return { url: devUrl, cache: false };
