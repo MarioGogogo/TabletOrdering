@@ -13,8 +13,7 @@ import { useAppStore } from '../store/useAppStore';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 // 登录页面
-import NLoginScreen from '../screens/NLoginScreen';
-import HomeV2Screen from '../screens/V2/HomeScreen';
+import HomeV2Screen from '../screens/V2/LoginScreen';
 // 首页（门店看板）
 import HomeScreen from '../screens/HomeScreen';
 // 点单页面（使用 WatermelonDB 版本）
