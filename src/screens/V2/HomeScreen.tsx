@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -62,9 +62,7 @@ const COLORS = {
 };
 
 // 类型定义
-interface HeaderProps {
-  onThemeToggle?: (isDark: boolean) => void;
-}
+interface HeaderProps {}
 
 interface StoreInfoProps {
   storeName: string;
@@ -90,8 +88,7 @@ interface QuickActionProps {
 }
 
 // 头部组件
-const Header: React.FC<HeaderProps> = ({ onThemeToggle }) => {
-  const [isDark, setIsDark] = useState(false);
+const Header: React.FC<HeaderProps> = () => {
   const [currentTime, setCurrentTime] = useState('');
 
   useEffect(() => {
@@ -105,13 +102,6 @@ const Header: React.FC<HeaderProps> = ({ onThemeToggle }) => {
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
   }, []);
-
-  const toggleTheme = () => {
-    const newIsDark = !isDark;
-    setIsDark(newIsDark);
-    onThemeToggle?.(newIsDark);
-    console.log('Theme toggled:', newIsDark);
-  };
 
   return (
     <View style={styles.header}>
